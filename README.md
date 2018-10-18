@@ -10,4 +10,7 @@ Some of the improvements implemented in this version of MC-GPU compared to previ
 - Optional focal spot motion.
 - Optional anti-scatter grid model.
 - Amorphous Selenium direct detector model: depth of interaction, fluorescence escape, charge generation, Swank factor, electronic noise.
+- Voxelized phantoms stored in memory usig a binary tree structure to save memory.
+- *Limitation*: material densities hardcoded for Graff's phantom composition.
+
 
