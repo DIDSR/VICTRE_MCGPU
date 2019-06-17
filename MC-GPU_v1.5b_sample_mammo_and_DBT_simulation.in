@@ -1,0 +1,78 @@
+ 
+# >>>> INPUT FILE FOR MC-GPU v1.5 VICTRE-DBT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+ 
+#[SECTION SIMULATION CONFIG v.2009-05-12]
+1.02e10                         # TOTAL NUMBER OF HISTORIES, OR SIMULATION TIME IN SECONDS IF VALUE < 100000
+123456789                       # RANDOM SEED (ranecu PRNG)
+10                              # GPU NUMBER TO USE WHEN MPI IS NOT USED, OR TO BE AVOIDED IN MPI RUNS
+128                             # GPU THREADS PER CUDA BLOCK (multiple of 32)
+5000                            # SIMULATED HISTORIES PER GPU THREAD
+ 
+#[SECTION SOURCE v.2016-12-02]
+W28kVp_Rh50um_Be1mm_SiemensBoone.spc    # X-RAY ENERGY SPECTRUM FILE
+ 0.00001  4.90   63.0           # SOURCE POSITION: X (chest-to-nipple), Y (right-to-left), Z (caudal-to-cranial) [cm]
+ 0.0    0.0    -1.0             # SOURCE DIRECTION COSINES: U V W
+15.0   7.4686667    # ==> 2/3 original angle of 11.203       # TOTAL AZIMUTHAL (WIDTH, X) AND POLAR (HEIGHT, Z) APERTURES OF THE FAN BEAM [degrees] (input negative to automatically cover the whole detector)
+90.0  -90.0   180.0             # EULER ANGLES (RzRyRz) TO ROTATE RECTANGULAR BEAM FROM DEFAULT POSITION AT Y=0, NORMAL=(0,-1,0)
+ 0.0300                         # SOURCE GAUSSIAN FOCAL SPOT FWHM [cm]
+ 0.18                           # 0.18 for DBT, 0 for FFDM [Mackenzie2017]  # ANGULAR BLUR DUE TO MOVEMENT ([exposure_time]*[angular_speed]) [degrees]
+YES                             # COLLIMATE BEAM TOWARDS POSITIVE AZIMUTHAL (X) ANGLES ONLY? (ie, cone-beam center aligned with chest wall in mammography) [YES/NO]
+ 
+#[SECTION IMAGE DETECTOR v.2017-06-20]
+mcgpu_image                     # OUTPUT IMAGE FILE NAME
+3000      1500                  # NUMBER OF PIXELS IN THE IMAGE: Nx Nz
+25.50     12.75                 # IMAGE SIZE (width, height): Dx Dz [cm]
+65.00                           # SOURCE-TO-DETECTOR DISTANCE (detector set in front of the source, perpendicular to the initial direction)
+ 0.0    0.0                     # IMAGE OFFSET ON DETECTOR PLANE IN WIDTH AND HEIGHT DIRECTIONS (BY DEFAULT BEAM CENTERED AT IMAGE CENTER) [cm]
+ 0.0200                         # DETECTOR THICKNESS [cm]
+ 0.004027  # ==> MFP(Se,19.0keV)   # DETECTOR MATERIAL MEAN FREE PATH AT AVERAGE ENERGY [cm]
+ 12658.0 11223.0 0.596 0.00593  # DETECTOR K-EDGE ENERGY [eV], K-FLUORESCENCE ENERGY [eV], K-FLUORESCENCE YIELD, MFP AT FLUORESCENCE ENERGY [cm]
+ 50.0    0.99                   # EFECTIVE DETECTOR GAIN, W_+- [eV/ehp], AND SWANK FACTOR (input 0 to report ideal energy fluence)
+ 5200.0                         # ADDITIVE ELECTRONIC NOISE LEVEL (electrons/pixel)
+ 0.10  1.9616          # ==> MFP(polystyrene,19keV)       # PROTECTIVE COVER THICKNESS (detector+grid) [cm], MEAN FREE PATH AT AVERAGE ENERGY [cm]
+ 5.0   31.0   0.0065            # ANTISCATTER GRID RATIO, FREQUENCY, STRIP THICKNESS [X:1, lp/cm, cm] (enter 0 to disable the grid)
+ 0.00089945   1.9616   # ==> MFP(lead&polystyrene,19keV)  # ANTISCATTER STRIPS AND INTERSPACE MEAN FREE PATHS AT AVERAGE ENERGY [cm]
+ 0                              # ORIENTATION 1D FOCUSED ANTISCATTER GRID LINES: 0==STRIPS PERPENDICULAR LATERAL DIRECTION (mammo style); 1==STRIPS PARALLEL LATERAL DIRECTION (DBT style)
+#[SECTION TOMOGRAPHIC TRAJECTORY v.2016-12-02]
+25      # ==> 1 for mammo only; ==> 25 for mammo + DBT    # NUMBER OF PROJECTIONS (1 disables the tomographic mode)
+60.0                            # SOURCE-TO-ROTATION AXIS DISTANCE
+ 2.083333333333333333           # ANGLE BETWEEN PROJECTIONS (360/num_projections for full CT) [degrees]
+-25.0                           # ANGULAR ROTATION TO FIRST PROJECTION (USEFUL FOR DBT, INPUT SOURCE DIRECTION CONSIDERED AS 0 DEGREES) [degrees]
+ 1.0  0.0  0.0                  # AXIS OF ROTATION (Vx,Vy,Vz)
+ 0.0                            # TRANSLATION ALONG ROTATION AXIS BETWEEN PROJECTIONS (HELICAL SCAN) [cm]
+YES                             # KEEP DETECTOR FIXED AT 0 DEGREES FOR DBT? [YES/NO]
+YES                             # SIMULATE BOTH 0 deg PROJECTION AND TOMOGRAPHIC SCAN (WITHOUT GRID) WITH 2/3 TOTAL NUM HIST IN 1st PROJ (eg, DBT+mammo)? [YES/NO]
+#[SECTION DOSE DEPOSITION v.2012-12-12]
+YES                             # TALLY MATERIAL DOSE? [YES/NO] (electrons not transported, x-ray energy locally deposited at interaction)
+NO                              # TALLY 3D VOXEL DOSE? [YES/NO] (dose measured separately for each voxel)
+mc-gpu_dose.dat                 # OUTPUT VOXEL DOSE FILE NAME
+  1  751                        # VOXEL DOSE ROI: X-index min max (first voxel has index 1)
+  1 1301                        # VOXEL DOSE ROI: Y-index min max
+250  250                        # VOXEL DOSE ROI: Z-index min max
+ 
+#[SECTION VOXELIZED GEOMETRY FILE v.2017-07-26]
+ Graff_hetero_breast_phantom.raw.gz    # VOXEL GEOMETRY FILE (penEasy 2008 format; .gz accepted)
+ 0.0    0.0    0.0              # OFFSET OF THE VOXEL GEOMETRY (DEFAULT ORIGIN AT LOWER BACK CORNER) [cm]
+ 1280   1950   940              # NUMBER OF VOXELS: INPUT A 0 TO READ ASCII FORMAT WITH HEADER SECTION, RAW VOXELS WILL BE READ OTHERWISE
+ 0.0050 0.0050 0.0050           # VOXEL SIZES [cm]
+ 1 1 1                          # SIZE OF LOW RESOLUTION VOXELS THAT WILL BE DESCRIBED BY A BINARY TREE, GIVEN AS POWERS OF TWO (eg, 2 2 3 = 2^2x2^2x2^3 = 128 input voxels per low res voxel; 0 0 0 disables tree)
+ 
+#[SECTION MATERIAL FILE LIST v.2009-11-30]
+air__5-120keV.mcgpu             #  1st MATERIAL FILE (.gz accepted)
+adipose__5-120keV.mcgpu         #  2nd MATERIAL FILE
+skin__5-120keV.mcgpu 
+glandular__5-120keV.mcgpu
+skin__5-120keV.mcgpu
+connective_Woodard__5-120keV.mcgpu 
+muscle__5-120keV.mcgpu
+muscle__5-120keV.mcgpu
+blood__5-120keV.mcgpu
+muscle__5-120keV.mcgpu
+polystyrene__5-120keV.mcgpu
+glandular__5-120keV.mcgpu
+CalciumOxalate__5-120keV.mcgpu
+W__5-120keV.mcgpu
+Se__5-120keV.mcgpu              # 15th MATERIAL FILE
+ 
+# >>>> END INPUT FILE >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+ 
