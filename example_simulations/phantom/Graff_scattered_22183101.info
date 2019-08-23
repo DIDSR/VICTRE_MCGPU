@@ -1,0 +1,25 @@
+
+-- Example breast phantom file created with Christian Graff's software.
+
+GENERATOR LOG:
+	Initial Random Seed = 7641175
+	SEED = 22183101
+	Breast type = scattered glandularity
+                  33.9% fat, 
+                   5.5 cm thick
+                   8.5 cm chest-to-nipple
+                   11.7 cm right-to-left
+	Breast Location = Right
+	Number of Masses = 1
+	Mass 0 Seed = 58278020
+	Mass 0 Diameter = 9.8
+	Run time = 8:36:48.760891
+
+NUMBER OF VOXELS: 
+ 1740   2415   1140
+ 
+VOXEL SIZE [cm]:
+ 0.0050  0.0050  0.0050
+ 
+INSERTED MASS VOXEL LOCATION:
+  489  795  790
