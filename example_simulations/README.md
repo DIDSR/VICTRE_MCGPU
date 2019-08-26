@@ -22,4 +22,23 @@ If multiple GPUs are available in the current computer, the simulation will be a
 ```bash
 mpirun -n 4 /path/MC-GPU_v1.5b.x /path/MC-GPU_v1.5b_scattered_phantom_mammo_fast.in | tee /path/MC-GPU_v1.5b_scattered_phantom_mammo_fast.out
 ```
+When simulating the mammography and DBT scans in the same simulation, the mammogram will be output in the file number "0000". The image ending in "0013" corresponds to the center (0 degree) of the DBT scan, and has the exact same view of the phantom as the mammogram but with much lower exposure, more scatter (no grid) and motion blur. 
+A visualization of file "mcgpu_image_15087760_hetero_0000.raw" (imageJ with the appropriate window and level scale) is provided below. 
+A visualization of the scatter component in the image is also provided. 
+This image is generated subtracting the second image in the .raw file (primary only) from the first image.
+It can be seen that the scatter (a small fraction of the primary transmission) transmits only in the vertical direction, which corresponds to the orientation of the antiscatter grid lines.
+A video of the 25 DBT projections is included in the results folder. 
+
+<img src="results/mcgpu_image_22183101_scattered_0000_a.jpg" width="900px"/>
+<img src="results/mcgpu_image_22183101_scattered_0000_scatter.jpg" width="900px"/>
+
+Visualizing the output with a wide grayscale window and level, you can identify different exposure regions in the image, labeled below.
+The compression plate and breast support can be seen in the image because they are included in the voxelized geometry and are only as large as the phantom (in a real system they would cover the entire detector).
+
+<img src="results/mcgpu_image_22183101_scattered_0000_b.jpg" width="900px"/>
+
+The average radiation dose deposited in the glandular tissue of the phantom is reported in the table in section "MATERIALS TOTAL DOSE TALLY REPORT" of the output file.
+In the scatter phantom simulation, the 4th column/6th row of the table reports a glandular dose of 0.90442 mGy for the mammogram, and 1.32413 mGy for the 25 projections of the DBT scan.
+This simulation had a runtime of 2 hours in a NVIDIA GeForce GTX TITAN X card (123 million x-rays/s).
+
 
