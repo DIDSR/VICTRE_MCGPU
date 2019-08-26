@@ -1,0 +1,233 @@
+          >> MPI run (myId=0, numprocs=1) on processor "Dell7910" (time: 13:44:38) <<
+              -- Time spent initializing the MPI world (MPI_Barrier): 0.111 s
+
+
+     *****************************************************************************
+     ***         MC-GPU, version 1.4_DBT (http://code.google.com/p/mcgpu/)         ***
+     ***                                                                       ***
+     ***  A. Badal and A. Badano, "Accelerating Monte Carlo simulations of     *** 
+     ***  photon transport in a voxelized geometry using a massively parallel  *** 
+     ***  Graphics Processing Unit", Medical Physics 36, pp. 4878–4880 (2009)  ***
+     ***                                                                       ***
+     ***                     Andreu Badal (Andreu.Badal-Soler@fda.hhs.gov)     ***
+     *****************************************************************************
+
+****** Code execution started on: Mon Aug 26 13:44:38 2019
+
+
+
+             *** CUDA SIMULATION IN THE GPU ***
+
+    -- INITIALIZATION phase:
+
+    -- Reading the input file 'MC-GPU_v1.5b_scattered_phantom_mammo_fast.in':
+       Input Euler angles to rotate the source from (0,1,0) to the input direction [deg]: rotZ1=90.000000 , rotY2=-90.000000 , rotZ3=180.000000
+       Material dose deposition tally ENABLED.
+       3D voxel dose deposition tally DISABLED.
+
+       Rotations from the detector plane to default detector plane at Y=0 [deg]: rotZ=-180.000000 , rotY=90.000000 , rotZ=-90.000000
+       Array for 4 scatter images correctly allocated (4500000 pixels, 137.329102 Mbytes)
+    -- Reading the energy spectrum and initializing the Walker aliasing sampling algorithm.
+
+    -- Data read from the input file:
+              x-ray tracks to simulate = 3400000000
+                   initial random seed = 55567890
+      NOTE: sampling only upper half of collimated cone beam, with beam offset to edge of the image (eg, mammo).
+      azimuthal (phi), polar apertures = 15.000000 , 11.203000 degrees
+              (max_height_at_y1cm = 0.198060 , max_width_at_y1cm = 0.131653)
+                      source direction = (0.000000, 0.000000, -1.000000)
+                   focal spot position = (0.000010, 6.025000, 63.000000)
+         focal spot Gaussian blur FWHM = 0.030000  (3D Gaussian dist. cropped at 2*sigma)
+              focal spot rotation blur = 0.000000 degrees
+              source-detector distance = 65.000000 cm
+              detector center position = (0.000010, 6.025000, -2.000000)
+      image offset from beam at center = (0.000000, 6.375000)
+              detector layer thickness = 0.020000 cm (=200.00 micron)
+         detector material average MFP = 0.004027 cm
+       detector material K-edge energy = 12658.000000 eV
+         fluorescence energy and yield = 11223.000000 eV , 0.596000
+            MFP at fluorescence energy = 0.005930 cm
+        detector gain and Swank factor = 50.000000 eV/detected_charge, 0.990000 (0.100504 relative std_dev)
+            electronic noise per pixel = 5200.000000 electrons
+              detector cover thickness = 0.100000 cm
+          cover average mean free path = 1.961600 cm
+                Antiscatter grid ratio = 5.000000
+            Antiscatter grid frequency = 31.000000 lines per cm
+      Antiscatter grid strip thickness = 0.006500 cm (=65.00 micron)
+      Computed antiscatter grid height = 0.128790 cm (=1287.90 micron)
+         strips average mean free path = 0.000899 cm
+     interspace average mean free path = 1.961600 cm
+          Antiscatter grid orientation = 0 --> 1D collimated grid with strips perpendicular to lateral direction (mammo style)
+                number of pixels image = 3000x1500 = 4500000
+                            pixel size = 0.00850x0.00850 cm
+                         detector size = 25.50000x12.75000 cm
+                 number of projections = 1
+                     output image file = results/mcgpu_image_22183101_scattered_mammo
+                      input voxel file = phantom/Graff_scattered_22183101.raw.gz
+                 voxel geometry offset = (0.000000, 0.000000, 0.000000) cm
+   size coarse voxels for binary trees = 2 x 2 x 2
+
+                  energy spectrum file = spectrum/W30kVp_Rh50um_Be1mm.spc
+            number of energy bins read = 44
+             minimum, maximum energies = 8.000, 30.000 keV
+                  mean energy spectrum = 19.550 keV
+
+
+    -- Reading binary voxel file in RAW format from file 'phantom/Graff_scattered_22183101.raw.gz':
+       Number of voxels in the geometry file (input file parameter):  1740 x 2415 x 1140 = 4790394000 voxels
+       Voxel size (input file parameter):  0.005000 x 0.005000 x 0.005000 cm  (voxel volume=1.250000e-07 cm^3)
+       Voxel bounding box size:  8.700000 x 12.075000 x 5.700000 cm
+
+
+!!WARNING!! HARDCODED CONVERSION TABLE FROM MATERIAL NUMBER TO DENSITY (kernel function "density_LUT") !!DeBuG!!
+
+
+
+    -- !!FixedDensity_DBT!! Initializing the voxel material vector, density taken from look up table:  (18273.902344 Mbytes)...
+
+#   Voxelized breast phantom in penEasy/MC-GPU format.
+#   Original data provided by Christian Graff (phantom/Graff_scattered_22183101.raw.gz):
+#   Materials number correspondence and original byte value (first material==0):
+#        0=air(0), 1=fat(1), 2=skin(2), 3=glandular(29), 4=nipple(33), 5=ligament(88), 6=muscle(14), 7=duct(125),
+#        8=artery(150)+vein(225), 9=terminal duct lobular unit(95), 10=compression_paddle_polystyrene(50), 11=lesion(200), 12=microcalc(250)
+
+
+       !!bitree!! Creating a binary tree structure to minimize memory use.
+
+    -- Creating low resolution version of the input voxelized geometry, and binary tree structure for every non-uniform coarse voxels...
+  !!bitree!!  Number of low resolution voxels: 599047200
+              Number of non-uniform low resolution voxels converted to binary trees: 26304994  (4.391139%)
+              Total number of binary tree nodes stored in memory for all trees: 311800
+              Identical non-uniform low resolution voxels merged: 26272027  (99.874680%)
+              Longest internal jump among all binary trees (max jump=128): 13
+
+              The geometric parameters 'num_voxels' and 'voxel_size' have been updated to the size of the low res voxel geometry: only the bitree has the original high res information.
+                 voxel_data->num_voxels.x=870 (before: 1740) , voxel_data->num_voxels.y=1208 (before: 2415) , voxel_data->num_voxels.z=570 (before: 1140)
+                 voxel_data->voxel_size.x=0.010000 cm (before: 0.005000) , voxel_data->voxel_size.y=0.010000 cm (before: 0.005000) , voxel_data->voxel_size.z=0.010000 cm (before: 0.005000)
+
+       Time spent creating the binary trees and the low res voxel geometry = 47.305 s.
+
+       >> RAM memory allocation: original voxelized geometry = 18273.902344 MBytes; low resolution voxelized geometry = 2285.183594 MBytes;
+                                 binary tree = 0.297356 MBytes; image vector = 137.329102 MBytes; data structures = 1.469343 Mbytes
+                                 (reduction in memory use with bitree: [low res voxels + binary tree]-[high res voxels] = -15988.421875 MBytes = -87.493%)
+
+    -- Reading the material data files (MAX_MATERIALS=15):
+         Mat 1: File 'material/air__5-120keV.mcgpu.gz'
+                Nominal density = 0.001205 g/cm^3; Max density in voxels = 0.001200 g/cm^3
+                Number of energy values in the mean free path database: 23002.
+                Linear interpolation data correctly allocated (8.072601 Mbytes)
+                Lowest energy first bin = 5000.000000 eV, last bin = 120005.000000 eV; bin width = 5.000000 eV
+         Mat 2: File 'material/adipose__5-120keV.mcgpu.gz'
+                Nominal density = 0.920000 g/cm^3; Max density in voxels = 0.920000 g/cm^3
+         Mat 3: File 'material/skin__5-120keV.mcgpu.gz'
+                Nominal density = 1.090000 g/cm^3; Max density in voxels = 1.090000 g/cm^3
+         Mat 4: File 'material/glandular__5-120keV.mcgpu.gz'
+                Nominal density = 1.060000 g/cm^3; Max density in voxels = 1.035000 g/cm^3
+         Mat 5: File 'material/skin__5-120keV.mcgpu.gz'
+                Nominal density = 1.090000 g/cm^3; Max density in voxels = 1.090000 g/cm^3
+         Mat 6: File 'material/connective_Woodard__5-120keV.mcgpu.gz'
+                Nominal density = 1.120000 g/cm^3; Max density in voxels = 1.120000 g/cm^3
+         Mat 7: File 'material/muscle__5-120keV.mcgpu.gz'
+                This material is not used in any voxel.
+         Mat 8: File 'material/muscle__5-120keV.mcgpu.gz'
+                Nominal density = 1.050000 g/cm^3; Max density in voxels = 1.050000 g/cm^3
+         Mat 9: File 'material/blood__5-120keV.mcgpu.gz'
+                Nominal density = 1.060000 g/cm^3; Max density in voxels = 1.000000 g/cm^3
+         Mat 10: File 'material/muscle__5-120keV.mcgpu.gz'
+                Nominal density = 1.050000 g/cm^3; Max density in voxels = 1.050000 g/cm^3
+         Mat 11: File 'material/polystyrene__5-120keV.mcgpu.gz'
+                Nominal density = 1.060000 g/cm^3; Max density in voxels = 1.060000 g/cm^3
+         Mat 12: File 'material/glandular__5-120keV.mcgpu.gz'
+                Nominal density = 1.060000 g/cm^3; Max density in voxels = 1.060000 g/cm^3
+         Mat 13: File 'material/CalciumOxalate__5-120keV.mcgpu.gz'
+                This material is not used in any voxel.
+         Mat 14: File 'material/W__5-120keV.mcgpu.gz'
+                This material is not used in any voxel.
+         Mat 15: File 'material/Se__5-120keV.mcgpu.gz'
+                This material is not used in any voxel.
+
+
+  !!WARNING!! The selected GPU number is too high, this device number does not exist!! GPU_id (starting at 0)=10, deviceCount=2
+            Selecting the fastest GPU available using gpuGetMaxGflopsDeviceId(): GPU_id = 0
+
+
+       ==> CUDA (MPI process #0): 2 CUDA enabled GPU detected! Using device #0: "GeForce GTX TITAN X"
+                 Compute capability: 5.2, Number multiprocessors: 24
+                 Clock rate: 1.22 GHz, Global memory: 12212.812 Mbyte, Constant memory: 64.00 kbyte
+                 Shared memory per block: 48.00 kbyte, Registers per block: 64.00 kbyte
+                 CUDA Driver Version: 10.0, Runtime Version: 9.0
+
+       ==> CUDA: Constant data successfully copied to the device. CONSTANT memory used: 0.386719 kbytes (0.6%)
+       ==> CUDA: Device global memory correctly allocated. GLOBAL memory used: 2432.352303 Mbytes (19.9%)
+       ==> CUDA: Launching kernel to initialize the device image to 0: number of blocks = 35157, threads per block = 128
+                 Time spent allocating and copying memory to the device: 1.310882 s
+
+    -- INITIALIZATION finished: elapsed time = 103.842 s. 
+
+
+
+    -- MONTE CARLO LOOP phase. Time: Mon Aug 26 13:46:22 2019
+
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 5313 blocks of 128 threads, with 5000 histories in each thread: 3400320000 histories in total (random seed=55567890, num_p=0).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Simulated x rays:    3400320000
+              Simulation time [s]: 29.02
+              Speed [x-rays/s]:    117181769.35
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  41.425%
+              Maximum energy fluence detected in pixel 1551622: (x,y)=(622,517). Maximum pixel value = 68.409680 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+       ==> CUDA: Time freeing the device memory and ending the GPU threads: 0.169173 s
+        >> MPI thread 0 in "Dell7910" done! (local time: 13:46:52)
+
+
+          *** MATERIALS TOTAL DOSE TALLY REPORT ***
+
+              Dose deposited in each material defined in the input file (tallied directly per material, not per voxel):
+              The results of this tally should be equal to the voxel tally doses for an ROI covering all voxels.
+              Total number of simulated x rays: 3400320000
+	 [MAT]  [DOSE eV/g/hist]  [2*std_dev]  [Rel_error 2*std_dev, %]  [E_dep eV/hist]  [DOSE mGy]  [Material mass g]  [Material file name]
+	======================================================================================================================================
+	1	59.67788		0.06401		0.11		18.71		0.03251		0.31350		air__5-120keV.mcgpu.gz
+	2	16.09083		0.00115		0.01		3517.41		0.00877		218.59684		adipose__5-120keV.mcgpu.gz
+	3	38.44154		0.00745		0.02		563.69		0.02094		14.66347		skin__5-120keV.mcgpu.gz
+	4	16.60318		0.00245		0.01		1000.38		0.00905		60.25256		glandular__5-120keV.mcgpu.gz
+	5	45.63429		0.07064		0.15		9.19		0.02486		0.20136		skin__5-120keV.mcgpu.gz
+	6	24.65654		0.00917		0.04		162.10		0.01343		6.57419		connective_Woodard__5-120keV.mcgpu.gz
+	7	0.00000		0.00000		0.00		0.00		0.00000		0.00000		muscle__5-120keV.mcgpu.gz
+	8	22.97769		0.03775		0.16		8.48		0.01252		0.36927		muscle__5-120keV.mcgpu.gz
+	9	19.36588		0.02580		0.13		12.96		0.01055		0.66897		blood__5-120keV.mcgpu.gz
+	10	16.87476		0.04249		0.25		3.63		0.00919		0.21536		muscle__5-120keV.mcgpu.gz
+	11	19.33697		0.00431		0.02		415.08		0.01053		21.46544		polystyrene__5-120keV.mcgpu.gz
+	12	12.53924		0.01930		0.15		9.89		0.00683		0.78855		glandular__5-120keV.mcgpu.gz
+	13	0.00000		0.00000		0.00		0.00		0.00000		0.00000		CalciumOxalate__5-120keV.mcgpu.gz
+	14	0.00000		0.00000		0.00		0.00		0.00000		0.00000		W__5-120keV.mcgpu.gz
+	15	0.00000		0.00000		0.00		0.00		0.00000		0.00000		Se__5-120keV.mcgpu.gz
+
+
+       ==> CUDA: Time reporting the dose data: 0.000089 s
+
+
+
+    -- SIMULATION FINISHED!
+
+
+       ****** TOTAL SIMULATION PERFORMANCE (including initialization and reporting) ******
+
+          >>> Execution time including initialization, transport and report: 134.181 s.
+          >>> Time spent in the Monte Carlo transport only: 29.017 s.
+          >>> Time spent in initialization, reporting and clean up: 105.164 s.
+          >>> Total number of simulated x rays:  3400320000
+          >>> Total speed (using 1 thread, including transport, initialization and report times) [x-rays/s]:  25341243.25
+          >>> Total speed Monte Carlo transport only (using 1 thread) [x-rays/s]:  117181769.35
+
+
+****** Code execution finished on: Mon Aug 26 13:46:52 2019
+
+

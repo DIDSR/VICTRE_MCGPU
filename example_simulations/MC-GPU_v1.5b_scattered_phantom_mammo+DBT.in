@@ -35,7 +35,7 @@ spectrum/W30kVp_Rh50um_Be1mm.spc    # X-RAY ENERGY SPECTRUM FILE
 YES                             # COLLIMATE BEAM TOWARDS POSITIVE AZIMUTHAL (X) ANGLES ONLY? (ie, cone-beam center aligned with chest wall in mammography) [YES/NO]
  
 #[SECTION IMAGE DETECTOR v.2017-06-20]
-mcgpu_results/mcgpu_image_22183101_scattered   # OUTPUT IMAGE FILE NAME
+results/mcgpu_image_22183101_scattered   # OUTPUT IMAGE FILE NAME
 3000      1500                  # NUMBER OF PIXELS IN THE IMAGE: Nx Nz
 25.50     12.75                 # IMAGE SIZE (width, height): Dx Dz [cm]
 65.00                           # SOURCE-TO-DETECTOR DISTANCE (detector set in front of the source, perpendicular to the initial direction)

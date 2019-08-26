@@ -1,0 +1,899 @@
+          >> MPI run (myId=0, numprocs=1) on processor "Dell7910" (time: 20:00:44) <<
+              -- Time spent initializing the MPI world (MPI_Barrier): 0.103 s
+
+
+     *****************************************************************************
+     ***         MC-GPU, version 1.4_DBT (http://code.google.com/p/mcgpu/)         ***
+     ***                                                                       ***
+     ***  A. Badal and A. Badano, "Accelerating Monte Carlo simulations of     *** 
+     ***  photon transport in a voxelized geometry using a massively parallel  *** 
+     ***  Graphics Processing Unit", Medical Physics 36, pp. 4878–4880 (2009)  ***
+     ***                                                                       ***
+     ***                     Andreu Badal (Andreu.Badal-Soler@fda.hhs.gov)     ***
+     *****************************************************************************
+
+****** Code execution started on: Fri Aug 23 20:00:44 2019
+
+
+
+             *** CUDA SIMULATION IN THE GPU ***
+
+    -- INITIALIZATION phase:
+
+    -- Reading the input file 'MC-GPU_v1.5b_hetero_phantom_mammo+DBT.in':
+       Input Euler angles to rotate the source from (0,1,0) to the input direction [deg]: rotZ1=90.000000 , rotY2=-90.000000 , rotZ3=180.000000
+       Material dose deposition tally ENABLED.
+       3D voxel dose deposition tally DISABLED.
+
+       Rotations from the detector plane to default detector plane at Y=0 [deg]: rotZ=-180.000000 , rotY=90.000000 , rotZ=-90.000000
+       Array for 4 scatter images correctly allocated (4500000 pixels, 137.329102 Mbytes)
+    -- Reading the energy spectrum and initializing the Walker aliasing sampling algorithm.
+
+    -- Data read from the input file:
+              x-ray tracks to simulate = 10200000000
+                   initial random seed = 31415990
+      NOTE: sampling only upper half of collimated cone beam, with beam offset to edge of the image (eg, mammo).
+      azimuthal (phi), polar apertures = 15.000000 , 7.468666 degrees
+              (max_height_at_y1cm = 0.131096 , max_width_at_y1cm = 0.131653)
+                      source direction = (0.000000, 0.000000, -1.000000)
+                   focal spot position = (0.000010, 4.900000, 63.000000)
+         focal spot Gaussian blur FWHM = 0.030000  (3D Gaussian dist. cropped at 2*sigma)
+              focal spot rotation blur = 0.180000 degrees (disabled for the first single projection at 0 deg)
+              source-detector distance = 65.000000 cm
+              detector center position = (0.000010, 4.900000, -2.000000)
+      image offset from beam at center = (0.000000, 6.375000)
+              detector layer thickness = 0.020000 cm (=200.00 micron)
+         detector material average MFP = 0.004027 cm
+       detector material K-edge energy = 12658.000000 eV
+         fluorescence energy and yield = 11223.000000 eV , 0.596000
+            MFP at fluorescence energy = 0.005930 cm
+        detector gain and Swank factor = 50.000000 eV/detected_charge, 0.990000 (0.100504 relative std_dev)
+            electronic noise per pixel = 5200.000000 electrons
+              detector cover thickness = 0.100000 cm
+          cover average mean free path = 1.961600 cm
+                Antiscatter grid ratio = 5.000000
+            Antiscatter grid frequency = 31.000000 lines per cm
+      Antiscatter grid strip thickness = 0.006500 cm (=65.00 micron)
+      Computed antiscatter grid height = 0.128790 cm (=1287.90 micron)
+         strips average mean free path = 0.000899 cm
+     interspace average mean free path = 1.961600 cm
+          Antiscatter grid orientation = 0 --> 1D collimated grid with strips perpendicular to lateral direction (mammo style)
+                number of pixels image = 3000x1500 = 4500000
+                            pixel size = 0.00850x0.00850 cm
+                         detector size = 25.50000x12.75000 cm
+                 number of projections = 25
+         source-rotation axis-distance = 60.000000 cm
+             angle between projections = 2.083333
+                  initial angle offset = -25.000000
+                        rotation point = (0.000010, 4.900000, 3.000000)
+                      axis of rotation = (1.000000, 0.000000, 0.000000)
+              translation between proj = 0.000000
+                     output image file = ./results/mcgpu_image_15087760_hetero
+                      input voxel file = phantom/Graff_hetero_15087760.raw.gz
+                 voxel geometry offset = (0.000000, 0.000000, 0.000000) cm
+   size coarse voxels for binary trees = 2 x 2 x 2
+
+                  energy spectrum file = spectrum/W28kVp_Rh50um_Be1mm.spc
+            number of energy bins read = 40
+             minimum, maximum energies = 8.000, 28.000 keV
+                  mean energy spectrum = 19.247 keV
+
+
+    -- Setting the parameters of the sources and detectors for the 25 tomographic projections (MAX_NUM_PROJECTIONS=720):
+
+         "flag_detectorFixed==true": the detector will stay fixed at 0 deg position (as in DBT acquisition).
+
+         << Projection #1 >>	 Angle=-25.00000 degrees
+                             	 Source position=(0.00001000,30.25709534,57.37846375), direction=(0.00000000,-0.42261827,-0.90630776)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #2 >>	 Angle=-22.91667 degrees
+                             	 Source position=(0.00001000,28.26351357,58.26433182), direction=(0.00000000,-0.38939190,-0.92107219)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #3 >>	 Angle=-20.83333 degrees
+                             	 Source position=(0.00001000,26.23904610,59.07713699), direction=(0.00000000,-0.35565078,-0.93461895)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #4 >>	 Angle=-18.75000 degrees
+                             	 Source position=(0.00001000,24.18636703,59.81580734), direction=(0.00000000,-0.32143945,-0.94693011)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #5 >>	 Angle=-16.66667 degrees
+                             	 Source position=(0.00001000,22.10819435,60.47937012), direction=(0.00000000,-0.28680325,-0.95798951)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #6 >>	 Angle=-14.58333 degrees
+                             	 Source position=(0.00001000,20.00727272,61.06694794), direction=(0.00000000,-0.25178787,-0.96778244)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #7 >>	 Angle=-12.50000 degrees
+                             	 Source position=(0.00001000,17.88637733,61.57775879), direction=(0.00000000,-0.21643963,-0.97629601)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #8 >>	 Angle=-10.41667 degrees
+                             	 Source position=(0.00001000,15.74831772,62.01113510), direction=(0.00000000,-0.18080528,-0.98351890)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #9 >>	 Angle=-8.33333 degrees
+                             	 Source position=(0.00001000,13.59591293,62.36649704), direction=(0.00000000,-0.14493188,-0.98944163)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #10 >>	 Angle=-6.25000 degrees
+                             	 Source position=(0.00001000,11.43201256,62.64337921), direction=(0.00000000,-0.10886689,-0.99405634)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #11 >>	 Angle=-4.16667 degrees
+                             	 Source position=(0.00001000,9.25947952,62.84141541), direction=(0.00000000,-0.07265799,-0.99735689)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #12 >>	 Angle=-2.08334 degrees
+                             	 Source position=(0.00001000,7.08118343,62.96033859), direction=(0.00000000,-0.03635306,-0.99933898)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #13 >>	 Angle=-0.00000 degrees
+                             	 Source position=(0.00001000,4.90000200,63.00000000), direction=(0.00000000,-0.00000003,-1.00000000)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #14 >>	 Angle=2.08333 degrees
+                             	 Source position=(0.00001000,2.71882033,62.96033859), direction=(0.00000000,0.03635300,-0.99933898)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #15 >>	 Angle=4.16666 degrees
+                             	 Source position=(0.00001000,0.54052591,62.84141541), direction=(0.00000000,0.07265791,-0.99735689)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #16 >>	 Angle=6.25000 degrees
+                             	 Source position=(0.00001000,-1.63200951,62.64337921), direction=(0.00000000,0.10886683,-0.99405634)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #17 >>	 Angle=8.33333 degrees
+                             	 Source position=(0.00001000,-3.79590940,62.36649704), direction=(0.00000000,0.14493182,-0.98944163)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #18 >>	 Angle=10.41667 degrees
+                             	 Source position=(0.00001000,-5.94831324,62.01113510), direction=(0.00000000,0.18080522,-0.98351890)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #19 >>	 Angle=12.50000 degrees
+                             	 Source position=(0.00001000,-8.08637619,61.57775879), direction=(0.00000000,0.21643960,-0.97629601)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #20 >>	 Angle=14.58333 degrees
+                             	 Source position=(0.00001000,-10.20726776,61.06694794), direction=(0.00000000,0.25178778,-0.96778250)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #21 >>	 Angle=16.66666 degrees
+                             	 Source position=(0.00001000,-12.30819130,60.47937012), direction=(0.00000000,0.28680319,-0.95798951)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #22 >>	 Angle=18.75000 degrees
+                             	 Source position=(0.00001000,-14.38636780,59.81581116), direction=(0.00000000,0.32143945,-0.94693017)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #23 >>	 Angle=20.83333 degrees
+                             	 Source position=(0.00001000,-16.43904114,59.07713699), direction=(0.00000000,0.35565069,-0.93461895)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #24 >>	 Angle=22.91666 degrees
+                             	 Source position=(0.00001000,-18.46351051,58.26433182), direction=(0.00000000,0.38939184,-0.92107219)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+         << Projection #25 >>	 Angle=25.00000 degrees
+                             	 Source position=(0.00001000,-20.45709229,57.37846756), direction=(0.00000000,0.42261821,-0.90630782)
+                             	 Detector center=(0.00001000,4.90000010,-2.00000000)
+
+    -- Reading binary voxel file in RAW format from file 'phantom/Graff_hetero_15087760.raw.gz':
+       Number of voxels in the geometry file (input file parameter):  1280 x 1950 x 940 = 2346240000 voxels
+       Voxel size (input file parameter):  0.005000 x 0.005000 x 0.005000 cm  (voxel volume=1.250000e-07 cm^3)
+       Voxel bounding box size:  6.400000 x 9.750000 x 4.700000 cm
+
+
+!!WARNING!! HARDCODED CONVERSION TABLE FROM MATERIAL NUMBER TO DENSITY (kernel function "density_LUT") !!DeBuG!!
+
+
+
+    -- !!FixedDensity_DBT!! Initializing the voxel material vector, density taken from look up table:  (8950.195312 Mbytes)...
+
+#   Voxelized breast phantom in penEasy/MC-GPU format.
+#   Original data provided by Christian Graff (phantom/Graff_hetero_15087760.raw.gz):
+#   Materials number correspondence and original byte value (first material==0):
+#        0=air(0), 1=fat(1), 2=skin(2), 3=glandular(29), 4=nipple(33), 5=ligament(88), 6=muscle(14), 7=duct(125),
+#        8=artery(150)+vein(225), 9=terminal duct lobular unit(95), 10=compression_paddle_polystyrene(50), 11=lesion(200), 12=microcalc(250)
+
+
+       !!bitree!! Creating a binary tree structure to minimize memory use.
+
+    -- Creating low resolution version of the input voxelized geometry, and binary tree structure for every non-uniform coarse voxels...
+  !!bitree!!  Number of low resolution voxels: 293280000
+              Number of non-uniform low resolution voxels converted to binary trees: 13996744  (4.772485%)
+              Total number of binary tree nodes stored in memory for all trees: 316457
+              Identical non-uniform low resolution voxels merged: 13963254  (99.760727%)
+              Longest internal jump among all binary trees (max jump=128): 13
+
+              The geometric parameters 'num_voxels' and 'voxel_size' have been updated to the size of the low res voxel geometry: only the bitree has the original high res information.
+                 voxel_data->num_voxels.x=640 (before: 1280) , voxel_data->num_voxels.y=975 (before: 1950) , voxel_data->num_voxels.z=470 (before: 940)
+                 voxel_data->voxel_size.x=0.010000 cm (before: 0.005000) , voxel_data->voxel_size.y=0.010000 cm (before: 0.005000) , voxel_data->voxel_size.z=0.010000 cm (before: 0.005000)
+
+       Time spent creating the binary trees and the low res voxel geometry = 23.881 s.
+
+       >> RAM memory allocation: original voxelized geometry = 8950.195312 MBytes; low resolution voxelized geometry = 1118.774414 MBytes;
+                                 binary tree = 0.301797 MBytes; image vector = 137.329102 MBytes; data structures = 1.469343 Mbytes
+                                 (reduction in memory use with bitree: [low res voxels + binary tree]-[high res voxels] = -7831.119141 MBytes = -87.497%)
+
+    -- Reading the material data files (MAX_MATERIALS=15):
+         Mat 1: File 'material/air__5-120keV.mcgpu.gz'
+                Nominal density = 0.001205 g/cm^3; Max density in voxels = 0.001200 g/cm^3
+                Number of energy values in the mean free path database: 23002.
+                Linear interpolation data correctly allocated (8.072601 Mbytes)
+                Lowest energy first bin = 5000.000000 eV, last bin = 120005.000000 eV; bin width = 5.000000 eV
+         Mat 2: File 'material/adipose__5-120keV.mcgpu.gz'
+                Nominal density = 0.920000 g/cm^3; Max density in voxels = 0.920000 g/cm^3
+         Mat 3: File 'material/skin__5-120keV.mcgpu.gz'
+                Nominal density = 1.090000 g/cm^3; Max density in voxels = 1.090000 g/cm^3
+         Mat 4: File 'material/glandular__5-120keV.mcgpu.gz'
+                Nominal density = 1.060000 g/cm^3; Max density in voxels = 1.035000 g/cm^3
+         Mat 5: File 'material/skin__5-120keV.mcgpu.gz'
+                Nominal density = 1.090000 g/cm^3; Max density in voxels = 1.090000 g/cm^3
+         Mat 6: File 'material/connective_Woodard__5-120keV.mcgpu.gz'
+                Nominal density = 1.120000 g/cm^3; Max density in voxels = 1.120000 g/cm^3
+         Mat 7: File 'material/muscle__5-120keV.mcgpu.gz'
+                This material is not used in any voxel.
+         Mat 8: File 'material/muscle__5-120keV.mcgpu.gz'
+                Nominal density = 1.050000 g/cm^3; Max density in voxels = 1.050000 g/cm^3
+         Mat 9: File 'material/blood__5-120keV.mcgpu.gz'
+                Nominal density = 1.060000 g/cm^3; Max density in voxels = 1.000000 g/cm^3
+         Mat 10: File 'material/muscle__5-120keV.mcgpu.gz'
+                Nominal density = 1.050000 g/cm^3; Max density in voxels = 1.050000 g/cm^3
+         Mat 11: File 'material/polystyrene__5-120keV.mcgpu.gz'
+                Nominal density = 1.060000 g/cm^3; Max density in voxels = 1.060000 g/cm^3
+         Mat 12: File 'material/glandular__5-120keV.mcgpu.gz'
+                Nominal density = 1.060000 g/cm^3; Max density in voxels = 1.060000 g/cm^3
+         Mat 13: File 'material/CalciumOxalate__5-120keV.mcgpu.gz'
+                This material is not used in any voxel.
+         Mat 14: File 'material/W__5-120keV.mcgpu.gz'
+                This material is not used in any voxel.
+         Mat 15: File 'material/Se__5-120keV.mcgpu.gz'
+                This material is not used in any voxel.
+
+
+  !!WARNING!! The selected GPU number is too high, this device number does not exist!! GPU_id (starting at 0)=10, deviceCount=2
+            Selecting the fastest GPU available using gpuGetMaxGflopsDeviceId(): GPU_id = 0
+
+
+       ==> CUDA (MPI process #0): 2 CUDA enabled GPU detected! Using device #0: "GeForce GTX TITAN X"
+                 Compute capability: 5.2, Number multiprocessors: 24
+                 Clock rate: 1.22 GHz, Global memory: 12212.812 Mbyte, Constant memory: 64.00 kbyte
+                 Shared memory per block: 48.00 kbyte, Registers per block: 64.00 kbyte
+                 CUDA Driver Version: 10.0, Runtime Version: 9.0
+
+       ==> CUDA: Constant data successfully copied to the device. CONSTANT memory used: 0.386719 kbytes (0.6%)
+       ==> CUDA: Device global memory correctly allocated. GLOBAL memory used: 1265.954034 Mbytes (10.4%)
+       ==> CUDA: Launching kernel to initialize the device image to 0: number of blocks = 35157, threads per block = 128
+                 Time spent allocating and copying memory to the device: 0.541422 s
+
+    -- INITIALIZATION finished: elapsed time = 50.436 s. 
+
+
+
+    -- MONTE CARLO LOOP phase. Time: Fri Aug 23 20:01:34 2019
+
+
+
+
+  !!DBT!! Simulating first a 0 degree projection with 0.6667 times the number of histories as the complete scan with 25 projections = 170000000000 histories
+          Afterwards, simulate the tomo acquisition starting at most negative angle and ending at most positive angle.
+          If defined, motion blur is disabled and anti-scatter grid enabled only for the single projection.
+
+
+
+
+
+   << Simulating a 0 degree projection (mammography) with 25 * 0.666667 as many histories as each tomographic projection >>
+
+          WARNING (MPI process #0): 5000 hist per thread would produce 265625 CUDA blocks (>65535 maximum). Increasing to 20433 hist to run exactly 65000 blocks in the GPU.
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 65000 blocks of 128 threads, with 20433 histories in each thread: 170002560000 histories in total (random seed=31415990, num_p=0).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Simulated x rays:    170002560000
+              Simulation time [s]: 1253.18
+              Speed [x-rays/s]:    135656997.16
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  45.452%
+              Maximum energy fluence detected in pixel 362209: (x,y)=(2209,120). Maximum pixel value = 88.411251 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+ !!DBT Reporting "tally_materials_dose" for the first 0 deg projection, and reseting material and voxel dose counters.
+
+
+          *** MATERIALS TOTAL DOSE TALLY REPORT ***
+
+              Dose deposited in each material defined in the input file (tallied directly per material, not per voxel):
+              The results of this tally should be equal to the voxel tally doses for an ROI covering all voxels.
+              Total number of simulated x rays: 170002560000
+	 [MAT]  [DOSE eV/g/hist]  [2*std_dev]  [Rel_error 2*std_dev, %]  [E_dep eV/hist]  [DOSE mGy]  [Material mass g]  [Material file name]
+	======================================================================================================================================
+	1	89.88236		0.01554		0.02		14.23		2.44817		0.15828		air__5-120keV.mcgpu.gz
+	2	24.87022		0.00038		0.00		1706.67		0.67740		68.62291		adipose__5-120keV.mcgpu.gz
+	3	58.93650		0.00168		0.00		515.23		1.60528		8.74204		skin__5-120keV.mcgpu.gz
+	4	32.01521		0.00045		0.00		2035.31		0.87201		63.57326		glandular__5-120keV.mcgpu.gz
+	5	71.78638		0.01270		0.02		13.88		1.95528		0.19335		skin__5-120keV.mcgpu.gz
+	6	36.88501		0.00235		0.01		108.98		1.00465		2.95448		connective_Woodard__5-120keV.mcgpu.gz
+	7	0.00000		0.00000		0.00		0.00		0.00000		0.00000		muscle__5-120keV.mcgpu.gz
+	8	42.69152		0.00681		0.02		17.58		1.16281		0.41188		muscle__5-120keV.mcgpu.gz
+	9	35.68746		0.00466		0.01		26.56		0.97204		0.74423		blood__5-120keV.mcgpu.gz
+	10	38.75377		0.00638		0.02		16.47		1.05555		0.42511		muscle__5-120keV.mcgpu.gz
+	11	29.09260		0.00096		0.00		375.33		0.79241		12.90134		polystyrene__5-120keV.mcgpu.gz
+	12	25.57366		0.00367		0.01		22.20		0.69656		0.86825		glandular__5-120keV.mcgpu.gz
+	13	0.00000		0.00000		0.00		0.00		0.00000		0.00000		CalciumOxalate__5-120keV.mcgpu.gz
+	14	0.00000		0.00000		0.00		0.00		0.00000		0.00000		W__5-120keV.mcgpu.gz
+	15	0.00000		0.00000		0.00		0.00		0.00000		0.00000		Se__5-120keV.mcgpu.gz
+
+     WARNING: it is possible that the unsigned long long int counter used to tally the standard deviation overflowed (>2^64).
+              The standard deviation may be incorrectly measured, but it will surely be very small (<< 1%).
+              Max counter (mat=4): E_dep = 34600809055091994 , E_dep^2 = 6592552949108407362
+
+
+
+ !!DBT!!  After the first full simulation (eg, mammo), simulate a DBT acquisition (starting at neg angle) with the input number histories per projections.
+
+
+
+
+
+   << Simulating tomographic projection 1 of 25 >> Angle: -25.000000 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1726573200, num_p=1).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 1 of 25: acquisition angle = -25.000000 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 68.75
+              Speed [x-rays/s]:    148359782.94
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.538%
+              Maximum energy fluence detected in pixel 36738: (x,y)=(738,12). Maximum pixel value = 129.218761 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 2 of 25 >> Angle: -22.916668 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=107201171, num_p=2).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 2 of 25: acquisition angle = -22.916668 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 68.92
+              Speed [x-rays/s]:    148000628.67
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.433%
+              Maximum energy fluence detected in pixel 834710: (x,y)=(710,278). Maximum pixel value = 129.523205 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 3 of 25 >> Angle: -20.833334 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1781923340, num_p=3).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 3 of 25: acquisition angle = -20.833334 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 68.93
+              Speed [x-rays/s]:    147978884.78
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.340%
+              Maximum energy fluence detected in pixel 1146727: (x,y)=(727,382). Maximum pixel value = 129.892739 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 4 of 25 >> Angle: -18.750000 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=165698873, num_p=4).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 4 of 25: acquisition angle = -18.750000 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.07
+              Speed [x-rays/s]:    147684981.56
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.255%
+              Maximum energy fluence detected in pixel 1104701: (x,y)=(701,368). Maximum pixel value = 129.564284 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 5 of 25 >> Angle: -16.666667 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=814831485, num_p=5).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 5 of 25: acquisition angle = -16.666667 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.21
+              Speed [x-rays/s]:    147377195.72
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.183%
+              Maximum energy fluence detected in pixel 330753: (x,y)=(753,110). Maximum pixel value = 131.984734 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 6 of 25 >> Angle: -14.583335 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1588055081, num_p=6).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 6 of 25: acquisition angle = -14.583335 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.28
+              Speed [x-rays/s]:    147235323.84
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.120%
+              Maximum energy fluence detected in pixel 885842: (x,y)=(842,295). Maximum pixel value = 129.897499 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 7 of 25 >> Angle: -12.500001 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=492088243, num_p=7).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 7 of 25: acquisition angle = -12.500001 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.43
+              Speed [x-rays/s]:    146919001.53
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.069%
+              Maximum energy fluence detected in pixel 234678: (x,y)=(678,78). Maximum pixel value = 129.364590 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 8 of 25 >> Angle: -10.416669 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=791813579, num_p=8).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 8 of 25: acquisition angle = -10.416669 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.40
+              Speed [x-rays/s]:    146972435.04
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.027%
+              Maximum energy fluence detected in pixel 669938: (x,y)=(938,223). Maximum pixel value = 129.337886 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 9 of 25 >> Angle: -8.333335 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1987815581, num_p=9).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 9 of 25: acquisition angle = -8.333335 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.58
+              Speed [x-rays/s]:    146601734.57
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  61.996%
+              Maximum energy fluence detected in pixel 498592: (x,y)=(592,166). Maximum pixel value = 127.670250 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 10 of 25 >> Angle: -6.250000 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1955121701, num_p=10).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 10 of 25: acquisition angle = -6.250000 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.59
+              Speed [x-rays/s]:    146571416.41
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  61.978%
+              Maximum energy fluence detected in pixel 1134806: (x,y)=(806,378). Maximum pixel value = 127.284162 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 11 of 25 >> Angle: -4.166668 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=581343724, num_p=11).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 11 of 25: acquisition angle = -4.166668 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.64
+              Speed [x-rays/s]:    146472584.03
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  61.970%
+              Maximum energy fluence detected in pixel 1161917: (x,y)=(917,387). Maximum pixel value = 126.357568 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 12 of 25 >> Angle: -2.083336 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=2035130341, num_p=12).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 12 of 25: acquisition angle = -2.083336 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.65
+              Speed [x-rays/s]:    146449650.89
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  61.973%
+              Maximum energy fluence detected in pixel 183875: (x,y)=(875,61). Maximum pixel value = 125.793157 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 13 of 25 >> Angle: -0.000002 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=839124535, num_p=13).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 13 of 25: acquisition angle = -0.000002 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.65
+              Speed [x-rays/s]:    146457645.65
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  61.987%
+              Maximum energy fluence detected in pixel 2737315: (x,y)=(1315,912). Maximum pixel value = 124.276743 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 14 of 25 >> Angle: 2.083332 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1014848807, num_p=14).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 14 of 25: acquisition angle = 2.083332 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.65
+              Speed [x-rays/s]:    146448450.28
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.013%
+              Maximum energy fluence detected in pixel 365203: (x,y)=(2203,121). Maximum pixel value = 126.438090 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 15 of 25 >> Angle: 4.166663 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=834532172, num_p=15).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 15 of 25: acquisition angle = 4.166663 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.62
+              Speed [x-rays/s]:    146510470.47
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.049%
+              Maximum energy fluence detected in pixel 482165: (x,y)=(2165,160). Maximum pixel value = 127.297066 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 16 of 25 >> Angle: 6.249997 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1889964252, num_p=16).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 16 of 25: acquisition angle = 6.249997 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.51
+              Speed [x-rays/s]:    146743136.91
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.092%
+              Maximum energy fluence detected in pixel 890071: (x,y)=(2071,296). Maximum pixel value = 127.308866 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 17 of 25 >> Angle: 8.333331 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=937622502, num_p=17).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 17 of 25: acquisition angle = 8.333331 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.31
+              Speed [x-rays/s]:    147170231.75
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.146%
+              Maximum energy fluence detected in pixel 1229085: (x,y)=(2085,409). Maximum pixel value = 128.427277 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 18 of 25 >> Angle: 10.416665 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1825973696, num_p=18).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 18 of 25: acquisition angle = 10.416665 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.16
+              Speed [x-rays/s]:    147493027.19
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.206%
+              Maximum energy fluence detected in pixel 551110: (x,y)=(2110,183). Maximum pixel value = 128.785733 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 19 of 25 >> Angle: 12.499999 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1092640923, num_p=19).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 19 of 25: acquisition angle = 12.499999 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.13
+              Speed [x-rays/s]:    147547579.18
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.271%
+              Maximum energy fluence detected in pixel 953097: (x,y)=(2097,317). Maximum pixel value = 129.956497 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 20 of 25 >> Angle: 14.583330 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1068827083, num_p=20).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 20 of 25: acquisition angle = 14.583330 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 68.78
+              Speed [x-rays/s]:    148290855.86
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.343%
+              Maximum energy fluence detected in pixel 866265: (x,y)=(2265,288). Maximum pixel value = 129.463822 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 21 of 25 >> Angle: 16.666664 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=220883562, num_p=21).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 21 of 25: acquisition angle = 16.666664 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 69.00
+              Speed [x-rays/s]:    147829373.56
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.421%
+              Maximum energy fluence detected in pixel 329274: (x,y)=(2274,109). Maximum pixel value = 130.219971 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 22 of 25 >> Angle: 18.749998 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1905536001, num_p=22).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 22 of 25: acquisition angle = 18.749998 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 68.68
+              Speed [x-rays/s]:    148506685.12
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.509%
+              Maximum energy fluence detected in pixel 50304: (x,y)=(2304,16). Maximum pixel value = 129.801295 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 23 of 25 >> Angle: 20.833329 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1255109948, num_p=23).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 23 of 25: acquisition angle = 20.833329 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 68.52
+              Speed [x-rays/s]:    148864991.59
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.603%
+              Maximum energy fluence detected in pixel 704293: (x,y)=(2293,234). Maximum pixel value = 129.639281 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 24 of 25 >> Angle: 22.916663 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=1596672885, num_p=24).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 24 of 25: acquisition angle = 22.916663 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 68.21
+              Speed [x-rays/s]:    149539004.58
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.707%
+              Maximum energy fluence detected in pixel 104279: (x,y)=(2279,34). Maximum pixel value = 129.223044 eV/cm^2 per hist.
+
+       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = 35157, threads per block = 128
+
+
+
+
+   << Simulating tomographic projection 25 of 25 >> Angle: 24.999997 degrees.
+
+
+
+        ==> CUDA (MPI process #0 in "Dell7910"): Executing 3900 blocks of 128 threads, with 20433 histories in each thread: 10200153600 histories in total (random seed=825533357, num_p=25).
+
+
+          *** IMAGE TALLY PERFORMANCE REPORT ***
+              Tomographic projection 25 of 25: acquisition angle = 24.999997 
+              Simulated x rays:    10200153600
+              Simulation time [s]: 68.40
+              Speed [x-rays/s]:    149116764.01
+
+              Fraction of initial energy arriving at the detector (over the mean energy of the spectrum):  62.818%
+              Maximum energy fluence detected in pixel 992248: (x,y)=(2248,330). Maximum pixel value = 128.941302 eV/cm^2 per hist.
+
+       ==> CUDA: Time freeing the device memory and ending the GPU threads: 0.113638 s
+        >> MPI thread 0 in "Dell7910" done! (local time: 20:51:43)
+
+
+          *** MATERIALS TOTAL DOSE TALLY REPORT ***
+
+              Dose deposited in each material defined in the input file (tallied directly per material, not per voxel):
+              The results of this tally should be equal to the voxel tally doses for an ROI covering all voxels.
+              Total number of simulated x rays: 255003840000
+              Simulated x rays for each of 25 projections:  10200153600
+
+	 [MAT]  [DOSE eV/g/hist]  [2*std_dev]  [Rel_error 2*std_dev, %]  [E_dep eV/hist]  [DOSE mGy]  [Material mass g]  [Material file name]
+	======================================================================================================================================
+	1	89.86051		0.01269		0.01		14.22		3.67136		0.15828		air__5-120keV.mcgpu.gz
+	2	24.59503		0.00031		0.00		1687.78		1.00486		68.62291		adipose__5-120keV.mcgpu.gz
+	3	59.24270		0.00138		0.00		517.90		2.42043		8.74204		skin__5-120keV.mcgpu.gz
+	4	31.43914		0.00036		0.00		1998.69		1.28448		63.57326		glandular__5-120keV.mcgpu.gz
+	5	71.54044		0.01035		0.01		13.83		2.92287		0.19335		skin__5-120keV.mcgpu.gz
+	6	36.29828		0.00191		0.01		107.24		1.48301		2.95448		connective_Woodard__5-120keV.mcgpu.gz
+	7	0.00000		0.00000		0.00		0.00		0.00000		0.00000		muscle__5-120keV.mcgpu.gz
+	8	42.05353		0.00552		0.01		17.32		1.71815		0.41188		muscle__5-120keV.mcgpu.gz
+	9	34.72542		0.00376		0.01		25.84		1.41875		0.74423		blood__5-120keV.mcgpu.gz
+	10	38.19554		0.00517		0.01		16.24		1.56052		0.42511		muscle__5-120keV.mcgpu.gz
+	11	29.24138		0.00079		0.00		377.25		1.19469		12.90134		polystyrene__5-120keV.mcgpu.gz
+	12	25.15590		0.00297		0.01		21.84		1.02777		0.86825		glandular__5-120keV.mcgpu.gz
+	13	0.00000		0.00000		0.00		0.00		0.00000		0.00000		CalciumOxalate__5-120keV.mcgpu.gz
+	14	0.00000		0.00000		0.00		0.00		0.00000		0.00000		W__5-120keV.mcgpu.gz
+	15	0.00000		0.00000		0.00		0.00		0.00000		0.00000		Se__5-120keV.mcgpu.gz
+
+     WARNING: it is possible that the unsigned long long int counter used to tally the standard deviation overflowed (>2^64).
+              The standard deviation may be incorrectly measured, but it will surely be very small (<< 1%).
+              Max counter (mat=4): E_dep = 50967328675025297 , E_dep^2 = 9715966461707950094
+
+
+
+       ==> CUDA: Time reporting the dose data: 0.000111 s
+
+
+
+    -- SIMULATION FINISHED!
+
+
+       ****** TOTAL SIMULATION PERFORMANCE (including initialization and reporting) ******
+
+          >>> Execution time including initialization, transport and report: 3060.425 s.
+          >>> Time spent in the Monte Carlo transport only: 2982.250 s.
+          >>> Time spent in initialization, reporting and clean up: 78.175 s.
+          >>> Total number of simulated x rays:  425006400000
+          >>> Total speed (using 1 thread, including transport, initialization and report times) [x-rays/s]:  138871680.72
+          >>> Total speed Monte Carlo transport only (using 1 thread) [x-rays/s]:  142511977.63
+
+
+****** Code execution finished on: Fri Aug 23 20:51:43 2019
+
+

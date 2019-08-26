@@ -1,0 +1,40 @@
+# 
+#     *****************************************************************************
+#     ***         MC-GPU, version 1.4_DBT (http://code.google.com/p/mcgpu/)     ***
+#     ***                                                                       ***
+#     ***                     Andreu Badal (Andreu.Badal-Soler@fda.hhs.gov)     ***
+#     *****************************************************************************
+# 
+#  *** SIMULATION IN THE GPU USING CUDA ***
+#
+#  Image created counting the energy arriving at each pixel: ideal energy integrating detector.
+#  Pixel value units: electrons/cm^2 per history (detected charge).
+#     Detector gain W_+- = 50.000000 eV/detected_charge
+#     Swank factor = 0.990000 -> relative std_dev of gain = 0.100504
+#     Mean electronic noise per pixel = 5200.000000 electrons
+#  Conversion from the energy deposited in each pixel to charge is done sampling a Gaussian distribution with:
+#     mean      = E_deposited/gain_W + electronic_noise
+#     std_dev^2 = mean*sqrt(1/Swank_factor - 1) + sqrt(electronic_noise)
+#
+#  Focal spot position = (0.00001000,6.02500010,63.00000000), cone beam direction = (0.00000000,0.00000000,-1.00000000)
+#  Focal spot Gaussian blur FWHM = 0.030000
+#  Focal spot rotation blur = 0.000000 degrees
+#  Antiscatter grid ratio = 5.000000 ; grid frequency = 31.000000 lines per cm
+# 
+#  Pixel size:  0.008500 x 0.008500 = 0.000072 cm^2
+#  Number of pixels in X and Z:  3000  1500
+# 
+#  The image data is reported in binary format in the .raw files (each pixel given as 32-bit float, little-endian order).
+#  Two images are reported one after the other in each .raw file: all SCATTER and PRIMARIES combined  and primary x-rays only (which includes additive electronic noise)
+# 
+#  NOTE: "flag_halfCone==true" --> Image acquired with only half cone beam towards positive azimuthal angles, with beam offset to the edge of the image.
+#  Pixel data is provided only in the .raw files. To report the data in ASCII format, include the string ".dat" in the input image file name.
+# 
+#
+#   *** Simulation REPORT: ***
+#       Fraction of source energy detected (over the mean energy of the spectrum): 41.426%
+#       Maximum energy fluence detected in pixel 42709: (x,y)=(709,14) -> pixel value = 59.551134 eV/cm^2 per hist.
+#       Simulated x rays:    340005120000
+#       Simulation time [s]: 3011.82
+#       Speed [x-rays/sec]:  112890360.47
+

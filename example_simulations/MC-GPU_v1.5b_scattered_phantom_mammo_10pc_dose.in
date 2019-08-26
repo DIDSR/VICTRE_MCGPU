@@ -2,27 +2,28 @@
 # 
 # >>>> INPUT FILE FOR MC-GPU v1.5 VICTRE-DBT >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 #                
-#  This input file simulates a mammogram and 25 projections of a DBT scan (+-25deg). 
+#  This input file simulates a mammogram of a compressed breast phantom  with scattered glandularity.
+#  To get the simulation results quickly (about 5min), the  number of histories (x-ray exposure) has been set to 1% of the number of x ray estimated for a standard mammogram in this simulation conditions.
+#  Make sure that the folder "results" exists before starting the simulation.
+#
 #  Main acquistion parameters: 
 #     - Source-to-detector distance 65 cm. 
 #     - Pixel size 85 micron (= 25.5 cm / 3000 pixels)
-#     - Antiscatter grid used only in the mammogram; motion blur used only in the DBT scan.
+#     - Antiscatter grid in use; no motion blur.
 #     - Breast phantom must be generated using C. Graff's software (hardcoded conversion from binary voxel value to material and density)
-#     - Number of histories matches number of x rays in a DBT projection, to reproduce the quantum noise and dose.
-#        -- Mammogram simulated with 2/3 the histories in the 25 projections combined (2.04e10*25*2/3 histories)
 #        -- It is ok to reduce the number of histories for testing the code!
 #        -- Number of histories computed to match the air kerma measured with the real system at the center of a PMMA phantom of equivalent thickness.
 #        -- Number of histotries must be re-calculated if the energy spectrum or beam aperture (field size) are changed.
 #
-#                      [Andreu Badal, 2019-08-23]
+#                      [Andreu Badal, 2019-08-26]
 #
 
 #[SECTION SIMULATION CONFIG v.2009-05-12]
-3.4e10      # Simulating only 10% of the expected mammo exposure for testing!    ORIGINAL HISTORIES:  3.4e11             # TOTAL NUMBER OF HISTORIES, OR SIMULATION TIME IN SECONDS IF VALUE < 100000
+3.4e9                       # Simulating only 1% of the expected mammo exposure for testing!    ORIGINAL HISTORIES:  3.4e11             # TOTAL NUMBER OF HISTORIES, OR SIMULATION TIME IN SECONDS IF VALUE < 100000
 55567890              # RANDOM SEED (ranecu PRNG)
 10                              # GPU NUMBER TO USE WHEN MPI IS NOT USED, OR TO BE AVOIDED IN MPI RUNS
-128                            # GPU THREADS PER CUDA BLOCK (multiple of 32)
-5000                          # SIMULATED HISTORIES PER GPU THREAD
+128                           # GPU THREADS PER CUDA BLOCK (multiple of 32)
+5000                         # SIMULATED HISTORIES PER GPU THREAD
  
 #[SECTION SOURCE v.2016-12-02]
 spectrum/W30kVp_Rh50um_Be1mm.spc    # X-RAY ENERGY SPECTRUM FILE
@@ -35,7 +36,7 @@ spectrum/W30kVp_Rh50um_Be1mm.spc    # X-RAY ENERGY SPECTRUM FILE
 YES                             # COLLIMATE BEAM TOWARDS POSITIVE AZIMUTHAL (X) ANGLES ONLY? (ie, cone-beam center aligned with chest wall in mammography) [YES/NO]
  
 #[SECTION IMAGE DETECTOR v.2017-06-20]
-mcgpu_results/mcgpu_image_22183101_scattered_mammo   # OUTPUT IMAGE FILE NAME
+results/mcgpu_image_22183101_scattered_mammo   # OUTPUT IMAGE FILE NAME
 3000      1500                  # NUMBER OF PIXELS IN THE IMAGE: Nx Nz
 25.50     12.75                 # IMAGE SIZE (width, height): Dx Dz [cm]
 65.00                           # SOURCE-TO-DETECTOR DISTANCE (detector set in front of the source, perpendicular to the initial direction)
