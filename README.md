@@ -14,7 +14,7 @@ Some of the improvements implemented in this version of MC-GPU compared to previ
 - *Limitation: material densities hardcoded for Graff's phantom composition.*
 
 ## Example simulation
-Simulation input files, and auxiliary files, have been added in a folder to allow the replication of two of the simulations of the VICTRE project.
+Simulation input files, and auxiliary files, have been added in the [example_simulations folder](https://github.com/DIDSR/VICTRE_MCGPU/tree/master/example_simulations) to allow the replication of two of the simulations of the VICTRE project.
 A breast phantom with scattered glandularity and a heterogreously dense phantom created with C. Graff model are provided (these phantoms were not part of the original VICTRE pivotal study, and have a single large mass embedded inside). The material files (generated from PENELOPE 2006 material files) and energy spectra used in the simulations are included.
 
 <img src="example_simulations/results/mcgpu_image_22183101_scattered_0000_a.jpg" width="900px"/>
