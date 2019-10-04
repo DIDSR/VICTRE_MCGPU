@@ -10,8 +10,29 @@
 //     Example execution to combine 25 DBT projections (from 0001 to 0025): 
 //      $ time ./extract_projections.x 3000 1500 25 1 mcgpu_image_22183101_scattered
 //   
-//                                                          [Andreu Badal 2019]
-
+//                                                          [Andreu Badal, 2019/10/04]
+//
+//  ***************************************************************************************
+//  *   DISCLAIMER
+//  *   This software and documentation (the "Software") were developed at the Food and
+//  *   Drug Administration (FDA) by employees of the Federal Government in the course
+//  *   of their official duties. Pursuant to Title 17, Section 105 of the United States
+//  *   Code, this work is not subject to copyright protection and is in the public
+//  *   domain. Permission is hereby granted, free of charge, to any person obtaining a
+//  *   copy of the Software, to deal in the Software without restriction, including
+//  *   without limitation the rights to use, copy, modify, merge, publish, distribute,
+//  *   sublicense, or sell copies of the Software or derivatives, and to permit persons
+//  *   to whom the Software is furnished to do so. FDA assumes no responsibility
+//  *   whatsoever for use by other parties of the Software, its source code,
+//  *   documentation or compiled executables, and makes no guarantees, expressed or
+//  *   implied, about its quality, reliability, or any other characteristic. Further,
+//  *   use of this code in no way implies endorsement by the FDA or confers any
+//  *   advantage in regulatory decisions.  Although this software can be redistributed
+//  *   and/or modified freely, we ask that any derivative works bear some notice that
+//  *   they are derived from it, and any modified versions bear some notice that they
+//  *   have been modified.
+//  *************************************************************************************** 
+ 
 
 int main(int argc, char **argv)
 {
@@ -25,7 +46,7 @@ int main(int argc, char **argv)
 
   char input_name[250], file_binary[250];
   
-  int i, p, pix_x=atoi(argv[1]), pix_y=atoi(argv[2]), num_projections=atoi(argv[3]), firstProj=atoi(argv[4]);  
+  int i, pix_x=atoi(argv[1]), pix_y=atoi(argv[2]), num_projections=atoi(argv[3]), firstProj=atoi(argv[4]);  
   strncpy(input_name, argv[5], 250);
   
   int pixels_per_image = pix_x * pix_y;
@@ -75,7 +96,8 @@ int main(int argc, char **argv)
     fclose(file_binary_in);
   }
 
-  fclose(file_binary_out); 
+  fclose(file_binary_out);  
+  free(data);
   printf("\n\n");
   return 0;
 }
