@@ -113,6 +113,9 @@
 #include "zlib.h"    // Library used to read gzip material and voxel files (non-compressed files can also be read). Compile with option -lz
 
 
+float density_LUT[MAX_MATERIALS];     // !!inputDensity!! Storing the material densities (nominal or user-input) in a global array in CPU and in constant memory in GPU
+int voxelId[256];                     // !!inputDensity!! Storing the voxel-to-material conversion table in a global array.
+
 
 #ifdef USING_CUDA
 // Include CUDA functions:
@@ -446,10 +449,13 @@ __device__
 inline 
 void tally_materials_dose(float* Edep, int* material, ulonglong2* materials_dose);
 
-#ifdef USING_CUDA
-__device__ __host__
-#endif
-inline float density_LUT(int material);                  //!!FixedDensity_DBT!! 
+
+// !!inputDensity!! Replacing the density_LUT function with a hardcoded look-up table for an array in RAM or GPU constant memory:
+// #ifdef USING_CUDA
+// __device__ __host__
+// #endif
+// inline float density_LUT(int material);                  //!!FixedDensity_DBT!! 
+
 
 #ifdef USING_CUDA
 __device__

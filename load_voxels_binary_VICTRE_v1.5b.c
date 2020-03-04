@@ -143,13 +143,21 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
   
   // -- Convert input values to Monte Carlo materials, and rotate phantom to have the source rotating around Z:
   //      ** Initial orientation: X=chest-nipple; Y=right-left; Z=feet-head --> Final orientation: X'=feet-head; Y'=Y=right-left; Z'=chest-nipple
-  MASTER_THREAD printf("\n#   Voxelized breast phantom in penEasy/MC-GPU format.\n"); 
-  MASTER_THREAD printf("#   Original data provided by Christian Graff (%s):\n", file_name_voxels);
-  MASTER_THREAD printf("#   Materials number correspondence and original byte value (first material==0):\n");
-//!!NOTE!!: insert correct material table here (depends on phantom):
-  MASTER_THREAD printf("#        0=air(0), 1=fat(1), 2=skin(2), 3=glandular(29), 4=nipple(33), 5=ligament(88), 6=muscle(14), 7=duct(125),\n");
-  MASTER_THREAD printf("#        8=artery(150)+vein(225), 9=terminal duct lobular unit(95), 10=compression_paddle_polystyrene(50), 11=lesion(200), 12=microcalc(250)\n\n");
-  MASTER_THREAD fflush(stdout);
+  
+  
+  
+  
+  
+//   MASTER_THREAD printf("\n#   Voxelized breast phantom in penEasy/MC-GPU format.\n"); 
+//   MASTER_THREAD printf("#   Original data provided by Christian Graff (%s):\n", file_name_voxels);
+//   MASTER_THREAD printf("#   Materials number correspondence and original byte value (first material==0):\n");
+// //!!NOTE!!: insert correct material table here (depends on phantom):
+//   MASTER_THREAD printf("#        0=air(0), 1=fat(1), 2=skin(2), 3=glandular(29), 4=nipple(33), 5=ligament(88), 6=muscle(14), 7=duct(125),\n");
+//   MASTER_THREAD printf("#        8=artery(150)+vein(225), 9=terminal duct lobular unit(95), 10=compression_paddle_polystyrene(50), 11=lesion(200), 12=microcalc(250)\n\n");
+//   MASTER_THREAD fflush(stdout);
+  
+  
+  
   
   int i, j, k;
   for (k=0; k<MAX_MATERIALS; k++)
@@ -163,77 +171,94 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
       {
         long long int pix = (i-1) + (j-1)*voxel_data->num_voxels.x + (k-1)*(long long int)voxel_data->num_voxels.x*voxel_data->num_voxels.y;      // Input voxel orientation: X=chest-nipple; Y=right-left; Z=feet-head --> Final orientation: X'=feet-head; Y'=Y=right-left; Z'=chest-nipple          
 
+        int input_ID = (int)(*voxel_mat_dens_ptr)[pix];
+        
+        if (input_ID<0 || input_ID>255)
+        {
+          printf("\n\n   >>>ERROR ASSIGNING VOXEL VALUE>>> Read voxel values must be between 0 and 255 (unsigned char). Value read for voxel %lld (%d,%d,%d): %d ?\n\n",pix,i,j,k,input_ID);
+          exit(-2);
+        }
+        
+        density_max[voxelId[input_ID]] = -1.0f;     // Flag that this material exists in a voxel of the geometry in binary format.
+        
+        (*voxel_mat_dens_ptr)[pix] = voxelId[input_ID];   // !!inputDensity!! Assign the required Monte Carlo material composition number to the voxel using the read voxel id and the voxel-to-material conversion table in global memory read from the input file (given after the material file name). The Monte Carlo material numbers are determined by the material file order in the input file.
+        
+
+        
+/*        
 //!!DeBuG!! HARDCODED Conversion table for breast phantoms (MUST MATCH THE "density_LOT" FUNCTION IN KERNEL!!):
           // Compute material:
           switch ((int)(*voxel_mat_dens_ptr)[pix])
           {
             case 0:
               (*voxel_mat_dens_ptr)[pix] = 0;  // ==Air
-              density_max[0] = max_value(density_LUT(0), density_max[0]);     // Store maximum density for each material
+              density_max[0] = max_value(density_LUT[0], density_max[0]);     // Store maximum density for each material
               break;
             case 1:
               (*voxel_mat_dens_ptr)[pix] = 1;  // ==fat
-              density_max[1] = max_value(density_LUT(1), density_max[1]);
+              density_max[1] = max_value(density_LUT[1], density_max[1]);
               break;
             case 2:
               (*voxel_mat_dens_ptr)[pix] = 2;  // ==skin
-              density_max[2] = max_value(density_LUT(2), density_max[2]);
+              density_max[2] = max_value(density_LUT[2], density_max[2]);
               break;
             case 29:
               (*voxel_mat_dens_ptr)[pix] = 3;  // ==glandular
-              density_max[3] = max_value(density_LUT(3), density_max[3]);
+              density_max[3] = max_value(density_LUT[3], density_max[3]);
               break;
             case 33:
               (*voxel_mat_dens_ptr)[pix] = 4;  // ==nipple
-              density_max[4] = max_value(density_LUT(4), density_max[4]);  // -> skin?
+              density_max[4] = max_value(density_LUT[4], density_max[4]);  // -> skin?
               break;
             case 40:
               (*voxel_mat_dens_ptr)[pix] = 6;  // ==muscle
-              density_max[6] = max_value(density_LUT(6), density_max[6]);
+              density_max[6] = max_value(density_LUT[6], density_max[6]);
               break;
             case 50:
               (*voxel_mat_dens_ptr)[pix] = 10; // ==Compression Paddle
-              density_max[10] = max_value(density_LUT(10), density_max[10]); //  -> composition? polystyrene dens = 1.06   ;  PMMA dens = 1.19
+              density_max[10] = max_value(density_LUT[10], density_max[10]); //  -> composition? polystyrene dens = 1.06   ;  PMMA dens = 1.19
+              break;
+            case 65:  
+              (*voxel_mat_dens_ptr)[pix] = 13; // ==Tungsten (bar patterns, MTF edge)
+              density_max[13] = max_value(density_LUT[13], density_max[13]);
               break;
             case 66:              
-              //!!DeBuG!! Assigning Selenium (d=4.5g/cm3) composition to the bar patterns instead of Tungsten (d=19.3g/cm3) to speed up the simulation:
-              (*voxel_mat_dens_ptr)[pix] = 14; // ==a-Se (bar patterns)
-              density_max[14] = max_value(density_LUT(14), density_max[14]);
-              
-//               (*voxel_mat_dens_ptr)[pix] = 13; // ==Tungsten (bar patterns, MTF edge)
-//               density_max[13] = max_value(density_LUT(13), density_max[13]);
+              (*voxel_mat_dens_ptr)[pix] = 14; // ==a-Se (bar patterns)   I could use Selenium (d=4.5g/cm3) for the bar patterns instead of Tungsten (d=19.3g/cm3) to speed up the QC phantom simulations
+              density_max[14] = max_value(density_LUT[14], density_max[14]);
               break;
             case 88:
               (*voxel_mat_dens_ptr)[pix] = 5;  // ==ligament(88)
-              density_max[5] = max_value(density_LUT(5), density_max[5]);  // -> connective Woodard?
+              density_max[5] = max_value(density_LUT[5], density_max[5]);  // -> connective Woodard?
               break;
             case 95:
               (*voxel_mat_dens_ptr)[pix] = 9;  // ==terminal duct lobular unit(95)
-              density_max[9] = max_value(density_LUT(9), density_max[9]);   // -> muscle?
+              density_max[9] = max_value(density_LUT[9], density_max[9]);   // -> muscle?
               break;
             case 125:
               (*voxel_mat_dens_ptr)[pix] = 7;  // ==duct(125)
-              density_max[7] = max_value(density_LUT(7), density_max[7]);
+              density_max[7] = max_value(density_LUT[7], density_max[7]);
               break;
             case 150:
               (*voxel_mat_dens_ptr)[pix] = 8;  // ==artery(150)
-              density_max[8] = max_value(density_LUT(8), density_max[8]);
+              density_max[8] = max_value(density_LUT[8], density_max[8]);
               break;
             case 200:
               (*voxel_mat_dens_ptr)[pix] = 11;  // ==Mass/Signal
-              density_max[11] = max_value(density_LUT(11), density_max[11]); // -> glandular?
+              density_max[11] = max_value(density_LUT[11], density_max[11]); // -> glandular?
               break;
             case 225:
               (*voxel_mat_dens_ptr)[pix] = 8;  // ==vein(225)
-              density_max[8] = max_value(density_LUT(8), density_max[8]);
+              density_max[8] = max_value(density_LUT[8], density_max[8]);
               break;
             case 250:
               (*voxel_mat_dens_ptr)[pix] = 12;  // ==Microcalcification
-              density_max[12] = max_value(density_LUT(12), density_max[12]);
+              density_max[12] = max_value(density_LUT[12], density_max[12]);
               break;              
             default:
               MASTER_THREAD printf(">>>ERROR ASSIGNING VOXEL VALUE>>> voxel(%lld) = %d ??\n", pix, (int)(*voxel_mat_dens_ptr)[pix]); fflush(stdout);
           }
+*/
+
 
       }
     }
