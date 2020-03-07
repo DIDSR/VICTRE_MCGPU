@@ -3121,9 +3121,9 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
   checkCudaErrors(cudaMemcpyToSymbol(dose_ROI_z_min_CONST, dose_ROI_z_min, sizeof(short int)));
   checkCudaErrors(cudaMemcpyToSymbol(dose_ROI_z_max_CONST, dose_ROI_z_max, sizeof(short int)));
   
+  checkCudaErrors(cudaMemcpyToSymbol(density_LUT_CONST, &density_LUT, MAX_MATERIALS*sizeof(float)));   // !!inputDensity!! store density look-up table in GPU constant memory 
 
-
-  double total_mem = sizeof(struct voxel_struct)+sizeof(struct source_struct)+sizeof(struct detector_struct)+sizeof(struct linear_interp) + 6*sizeof(short int);
+  double total_mem = sizeof(struct voxel_struct)+sizeof(struct source_struct)+sizeof(struct detector_struct)+sizeof(struct linear_interp) + 6*sizeof(short int) + MAX_MATERIALS*sizeof(float);
   MASTER_THREAD printf("       ==> CUDA: Constant data successfully copied to the device. CONSTANT memory used: %lf kbytes (%.1lf%%)\n", total_mem/1024.0, 100.0*total_mem/deviceProp.totalConstMem);
   
 
@@ -3222,7 +3222,7 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
   // Init materials_dose array in GPU with 0 (same as host):
   if (flag_material_dose==1)
     checkCudaErrors(cudaMemcpy(*materials_dose_device, materials_dose, MAX_MATERIALS*sizeof(ulonglong2), cudaMemcpyHostToDevice));   // !!tally_materials_dose!!
-  
+    
   MASTER_THREAD printf("                 Time spent allocating and copying memory to the device: %.6f s\n", float(clock()-clock_init)/CLOCKS_PER_SEC);    
 
 }
