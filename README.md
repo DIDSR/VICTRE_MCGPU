@@ -148,6 +148,15 @@ The following assumptions were implemented in the models for lack of detailed kn
   * No patient motion during image acquisition.
 
 
+## Material density and voxel id table 
+The original VICTRE code used a hard-coded conversion table to assign a material to a specific voxel id number, and a fixed density for each material.
+The code has been upgraded to allow the user to choose the density and voxel id for each material listed in the input file. 
+To do this, after each material file names add the keyword 'density=' and the desired material density (if no density is given, the nominal material density written in the material file is used). 
+You can also use the keyword 'voxelID=' to provide a comma-separated list of voxel id numbers.
+The voxels in the input geometry with the given id will be assigned to the corresponding material.
+See the input file "MC-GPU_v1.5b_sample_mammo_and_DBT_simulation_InputDensity.in" for an example.
 
+If no density and voxel id are input, the software automatically defaults to the same values used in the VICTRE project.
+THe new code is 100% compatible with the old input files, and the change has no effect on the simulation results.
 
 
