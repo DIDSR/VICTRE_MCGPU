@@ -663,7 +663,7 @@ int main(int argc, char **argv)
     for(llk=0; llk<((long long int)voxel_data.num_voxels.x*(long long int)voxel_data.num_voxels.y*(long long int)voxel_data.num_voxels.z); llk++)  // For each voxel in the geometry
     {
           //     mass_materials[((int)voxel_mat_dens[llk].x)-1] += ((double)voxel_mat_dens[llk].y)*voxel_volume;        // Add material mass = density*volume
-      mass_materials[((int)voxel_mat_dens[llk])] += ((double)density_LUT((int)voxel_mat_dens[llk]))*voxel_volume;      // Add material mass = density*volume (first material==0)    //!!FixedDensity_DBT!! Density taken from function "density_LOT"
+      mass_materials[((int)voxel_mat_dens[llk])] += ((double)density_LUT[((int)voxel_mat_dens[llk])])*voxel_volume;      // Add material mass = density*volume (first material==0)    //!!FixedDensity_DBT!! Density taken from function "density_LOT"
     }
     
     
@@ -1506,7 +1506,7 @@ int main(int argc, char **argv)
 void read_input(int argc, char** argv, int myID, unsigned long long int* total_histories, int* seed_input, int* gpu_id, int* num_threads_per_block, int* histories_per_thread, struct detector_struct* detector_data, unsigned long long int** image_ptr, int* image_bytes, struct source_struct* source_data, struct source_energy_struct* source_energy_data, struct voxel_struct* voxel_data, char* file_name_voxels, char file_name_materials[MAX_MATERIALS][250] , char* file_name_output, char* file_name_espc, int* num_projections, ulonglong2** voxels_Edep_ptr, int* voxels_Edep_bytes, char* file_dose_output, short int* dose_ROI_x_min, short int* dose_ROI_x_max, short int* dose_ROI_y_min, short int* dose_ROI_y_max, short int* dose_ROI_z_min, short int* dose_ROI_z_max, double* SRotAxisD, double* translation_helical, int* flag_material_dose, bool* flag_simulateMammoAfterDBT, bool* flag_detectorFixed)
 {
   FILE* file_ptr = NULL;
-  char new_line[250];
+  char new_line[400];
   char *new_line_ptr = NULL;
   double dummy_double;
 
@@ -1548,7 +1548,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   // -- Init. [SECTION SIMULATION CONFIG v.2009-05-12]:
   do
   {
-    new_line_ptr = fgets(new_line, 250, file_ptr);    // Read full line (max. 250 characters).
+    new_line_ptr = fgets(new_line, 400, file_ptr);    // Read full line (max. 400 characters).
     if (new_line_ptr==NULL)
     {
       printf("\n\n   !!read_input ERROR!! Input file is not readable or does not contain the string \'SECTION SIMULATION CONFIG v.2009-05-12\'!!\n");
@@ -1556,14 +1556,14 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     }
   }
   while(strstr(new_line,"SECTION SIMULATION CONFIG v.2009-05-12")==NULL);   // Skip comments and empty lines until the section begins
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%lf", &dummy_double);
     *total_histories = (unsigned long long int) (dummy_double+0.0001);  // Maximum unsigned long long value: 18446744073709551615
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%d", seed_input);   // Set the RANECU PRNG seed (the same seed will be used to init the 2 MLCGs in RANECU)
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%d", gpu_id);       // GPU NUMBER WHERE SIMULATION WILL RUN
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%d", num_threads_per_block);  // GPU THREADS PER CUDA BLOCK
     
 #ifdef USING_CUDA
@@ -1576,7 +1576,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     exit(-2);
   }
 #endif
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%d", histories_per_thread);   // HISTORIES PER GPU THREAD
 
 
@@ -1585,7 +1585,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   // -- Init. [SECTION SOURCE v.2009-05-12]:  !!DBTv1.4!!   ;  [SECTION SOURCE v.2011-07-12]  ;  [SECTION SOURCE v.2009-05-12]
   do
   {
-    new_line_ptr = fgets(new_line, 250, file_ptr);
+    new_line_ptr = fgets(new_line, 400, file_ptr);
     if (new_line_ptr==NULL)
     {
       printf("\n\n   !!read_input ERROR!! Input file is not readable or does not contain the string \'SECTION SOURCE v.2016-12-02\'!!\n");    // !!DBTv1.4!!
@@ -1594,12 +1594,12 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   }
   while(strstr(new_line,"SECTION SOURCE v.2016-12-02")==NULL);   // Skip comments and empty lines until the section begins
 
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);  // X-RAY ENERGY SPECTRUM FILE
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);  // X-RAY ENERGY SPECTRUM FILE
     trim_name(new_line, file_name_espc);
     
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f %f %f", &source_data[0].position.x, &source_data[0].position.y, &source_data[0].position.z);   // SOURCE POSITION: X Y Z [cm]
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f %f %f", &source_data[0].direction.x, &source_data[0].direction.y, &source_data[0].direction.z);   // SOURCE DIRECTION COSINES: U V W
     // -- Normalize the input beam direction to 1:
     dummy_double = 1.0/sqrt((double)(source_data[0].direction.x*source_data[0].direction.x + source_data[0].direction.y*source_data[0].direction.y + source_data[0].direction.z*source_data[0].direction.z));
@@ -1608,7 +1608,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     source_data[0].direction.z = (float)(((double)source_data[0].direction.z)*dummy_double);
 
   // Read input fan beam polar (theta) and azimuthal (phi) aperture angles (deg):
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
   double phi_aperture, theta_aperture;
     sscanf(new_line, "%lf %lf", &phi_aperture, &theta_aperture);
 
@@ -1633,7 +1633,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   
   // Read the source rotation: necessary to define which direction is azimuthal (width) and polar (height) in the rotated source emission:             !!DBTv1.4!!
   double rotZ1, rotY2, rotZ3;
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
   sscanf(new_line, "%lf %lf %lf", &rotZ1, &rotY2, &rotZ3);  // EULER ANGLES (RzRyRz) TO ROTATE RECTANGULAR BEAM FROM DEFAULT POSITION AT Y=0, NORMAL=(0,-1,0)   //!!DBTv1.4!!
   
   // *** Init the fan beam source model:
@@ -1676,14 +1676,14 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
 
 
   // Read parameters for the non-ideal focal spot:             !!DBTv1.4!!
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
   sscanf(new_line, "%f", &source_data[0].focal_spot_FWHM);  // SOURCE GAUSSIAN FOCAL SPOT FWHM [cm]
   
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
   sscanf(new_line, "%f", &source_data[0].rotation_blur);    // ANGULAR BLUR DUE TO MOVEMENT ([exposure_time]*[angular_speed]) [degrees]
   source_data[0].rotation_blur = fabsf(source_data[0].rotation_blur*DEG2RAD);
   
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);    // COLLIMATE BEAM TOWARDS POSITIVE X ANGLES ONLY? (ie, cone-beam center aligned with chest wall in mammography) [YES/NO]
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);    // COLLIMATE BEAM TOWARDS POSITIVE X ANGLES ONLY? (ie, cone-beam center aligned with chest wall in mammography) [YES/NO]
   if (0==strncmp("YE",new_line,2) || 0==strncmp("Ye",new_line,2) || 0==strncmp("ye",new_line,2))
     source_data[0].flag_halfConeX = true;
     // MASTER_THREAD printf("       \'flag_halfConeX = true\': sampling only upper half beam for mammo geometry; beam centered at image edge.\n");   // !!DBT!!  !!HalfBeam!! !!DBTv1.4!!
@@ -1704,7 +1704,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   // -- Init. [SECTION IMAGE DETECTOR v.2017-06-20]]:       !!DBTv1.5!!
   do
   {
-    new_line_ptr = fgets(new_line, 250, file_ptr);
+    new_line_ptr = fgets(new_line, 400, file_ptr);
     if (new_line_ptr==NULL)
     {
       printf("\n\n   !!read_input ERROR!! Input file is not readable or does not contain the string \'SECTION IMAGE DETECTOR v.2017-06-20]\'!!\n");
@@ -1712,9 +1712,9 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     }
   }
   while(strstr(new_line,"SECTION IMAGE DETECTOR v.2017-06-20")==NULL);   // Skip comments and empty lines until the section begins       !!DBTv1.5!!
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     trim_name(new_line, file_name_output);   // OUTPUT IMAGE FILE NAME (no spaces)
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     float dummy_num_pixels_x, dummy_num_pixels_y;  // Read input pixel number as float and truncated to integer
     sscanf(new_line, "%f %f", &dummy_num_pixels_x, &dummy_num_pixels_y);   // NUMBER OF PIXELS IN THE IMAGE: Nx Nz
     detector_data[0].num_pixels.x = (int)(dummy_num_pixels_x+0.001f);
@@ -1730,13 +1730,13 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
       exit(-2); 
     }
   
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
   sscanf(new_line, "%f %f", &detector_data[0].width_X, &detector_data[0].height_Z);   // IMAGE SIZE (width, height): Dx Dz [cm]
 
   detector_data[0].inv_pixel_size_X = detector_data[0].num_pixels.x / detector_data[0].width_X;
   detector_data[0].inv_pixel_size_Z = detector_data[0].num_pixels.y / detector_data[0].height_Z;
 
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f", &detector_data[0].sdd);            // SOURCE-TO-DETECTOR DISTANCE [cm] (detector set in front of the source, normal to the input direction)
 
   if ((detector_data[0].sdd)<1.0e-6)
@@ -1749,24 +1749,24 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   }
     
   // Input parameters for the improved detector model:   !!DBTv1.4!!
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f %f", &detector_data[0].offset.x, &detector_data[0].offset.y);  // IMAGE OFFSET ON DETECTOR PLANE IN WIDTH AND HEIGHT DIRECTIONS (BY DEFAULT BEAM CENTERED AT IMAGE CENTER) [cm]  !!DBTv1.4!!
 
   if (source_data[0].flag_halfConeX)
     detector_data[0].offset.y = detector_data[0].offset.y + 0.5*detector_data[0].height_Z;   // Center the cone beam at the edge of the image with a halfCone (mammo).    !!DBT!!  !!HalfBeam!!  !!DBTv1.4!!
 
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f", &detector_data[0].scintillator_thickness);  // DETECTOR THICKNESS [cm]                                                 !!DBTv1.4!!
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f", &detector_data[0].scintillator_MFP);        // DETECTOR MATERIAL AVERAGE MEAN FREE PATH [1/cm]                         !!DBTv1.4!!
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f %f %f %f", &detector_data[0].kedge_energy, &detector_data[0].fluorescence_energy, &detector_data[0].fluorescence_yield, &detector_data[0].fluorescence_MFP);   // DETECTOR K-EDGE ENERGY [eV], K-FLUORESCENCE ENERGY [eV], K-FLUORESCENCE YIELD, MFP AT FLUORESCENCE ENERGY [cm]
            // NOTE: K-EDGE ENERGY, K-FLUORESCENCE ENERGY and K-FLUORESCENCE YIELD are tabulated in the XRAYLIB and other tables                   !!DBTv1.4!!    
     
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     float Swank_factor = -1.0f;
     sscanf(new_line, "%f %f", &detector_data[0].gain_W, &Swank_factor);   // EFECTIVE DETECTOR GAIN, W_+- [eV/ehp], SWANK FACTOR (input 0 to report ideal energy fluence)
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f", &detector_data[0].electronic_noise);     // ELECTRONIC NOISE LEVEL (electrons/pixel)
 
   if (detector_data[0].gain_W<0.001f || Swank_factor<0.001f)
@@ -1784,16 +1784,16 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
       detector_data[0].Swank_rel_std = sqrtf(1.0f/Swank_factor - 1.0f);
   }
   
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f %f", &detector_data[0].cover_thickness, &detector_data[0].cover_MFP);   // PROTECTIVE COVER THICKNESS (detector and grid) [cm], MEAN FREE PATH AT AVERAGE ENERGY [cm]    !!DBTv1.5!!
     
   float grid_strip_MFP=-1.0f, grid_interspace_MFP=-1.0f;
   int grid_orientation=99;
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f %f %f", &detector_data[0].grid_ratio, &detector_data[0].grid_freq, &detector_data[0].grid_strip_thickness);   // ANTISCATTER GRID RATIO, FREQUENCY, STRIP THICKNESS [X:1, lp/cm, cm]       !!DBTv1.5!!
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f %f", &grid_strip_MFP, &grid_interspace_MFP);       // ANTISCATTER STRIPS AND INTERSPACE MEAN FREE PATHS AT MEAN ENERGY [cm]             !!DBTv1.5!!
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%d", &grid_orientation);                              // ORIENTATION 1D FOCUSED ANTISCATTER GRID LINES: 0==STRIPS PERPENDICULAR LATERAL DIRECTION (mammo style); 1==STRIPS PARALLEL LATERAL DIRECTION (DBT style)      !!DBTv1.5!! 
 
   detector_data[0].grid_strip_mu = 1.0f/grid_strip_MFP;                     // Store the coefficients of attenuation for the attenuating strips and the interspace material [1/cm]
@@ -1866,7 +1866,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   // -- Init. [SECTION TOMOGRAPHIC TRAJECTORY v.2016-12-02]     (OLD NAME SECTION: [SECTION CT SCAN v.2011-10-25])       !!DBTv1.4!!
   do
   {
-    new_line_ptr = fgets(new_line, 250, file_ptr);
+    new_line_ptr = fgets(new_line, 400, file_ptr);
     if (new_line_ptr==NULL)
     {
       printf("\n\n   !!read_input ERROR!! Input file is not readable or does not contain the string \'SECTION TOMOGRAPHIC TRAJECTORY v.2016-12-02\'!!\n");
@@ -1875,7 +1875,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   }
   while(strstr(new_line,"SECTION TOMOGRAPHIC TRAJECTORY v.2016-12-02")==NULL);  // Skip comments and empty lines until the section begins
 
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
   sscanf(new_line, "%d", num_projections);     // NUMBER OF PROJECTIONS (set to 1 or less for a single projection)
   if (*num_projections<1)
     *num_projections = 1;      // Zero projections has the same effect as 1 projection (ie, no CT scan rotation).
@@ -1903,7 +1903,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   else
   {
     // -- Tomographic scan with multiple projections:    
-    new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%lf", SRotAxisD);   // SOURCE-TO-ROTATION AXIS DISTANCE
     if (*SRotAxisD<0.0 || *SRotAxisD>detector_data[0].sdd)
     {
@@ -1919,18 +1919,18 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     source_data[0].rotation_point.z = source_data[0].position.z + source_data[0].direction.z * (*SRotAxisD);
 
   
-    new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f", &source_data[0].angle_per_projection); // ANGLE BETWEEN PROJECTIONS [degrees] (360/num_projections for full CT)   !!DBTv1.4!!
     source_data[0].angle_per_projection = source_data[0].angle_per_projection*DEG2RAD;      // store the angle in radians
 
  
-    new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f", &source_data[0].angle_offset);         // ANGULAR ROTATION TO FIRST PROJECTION (USEFUL FOR DBT, INPUT SOURCE DIRECTION CONSIDERED AS 0 DEGREES) [degrees]   !!DBTv1.4!!
     source_data[0].angle_offset = source_data[0].angle_offset*DEG2RAD;
 
 
     double wx,wy,wz,norm;
-    new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%lf %lf %lf", &wx, &wy, &wz);               // AXIS OF ROTATION     !!DBTv1.4!!
     norm = 1.0/sqrt(wx*wx+wy*wy+wz*wz);
     source_data[0].axis_of_rotation.x = (float) wx*norm;
@@ -1938,11 +1938,11 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     source_data[0].axis_of_rotation.z = (float) wz*norm;
     
     
-    new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%lf", translation_helical);                 // TRANSLATION ALONG ROTATION AXIS BETWEEN PROJECTIONS (HELICAL SCAN) [cm]
 
 
-    new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);        // KEEP DETECTOR FIXED AT 0 DEGREES FOR DBT? [YES/NO]
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);        // KEEP DETECTOR FIXED AT 0 DEGREES FOR DBT? [YES/NO]
     if (0==strncmp("YE",new_line,2) || 0==strncmp("Ye",new_line,2) || 0==strncmp("ye",new_line,2))
       *flag_detectorFixed = true;
     else if (0==strncmp("NO",new_line,2) || 0==strncmp("No",new_line,2) || 0==strncmp("no",new_line,2))
@@ -1957,7 +1957,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     }
     
     
-    new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);        // SIMULATE BOTH 0 deg PROJECTION AND TOMOGRAPHIC SCAN (WITHOUT GRID) WITH 2/3 TOTAL NUM HIST IN 1st PROJ (eg, DBT+mammo)? [YES/NO]    !!DBTv1.4!!
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);        // SIMULATE BOTH 0 deg PROJECTION AND TOMOGRAPHIC SCAN (WITHOUT GRID) WITH 2/3 TOTAL NUM HIST IN 1st PROJ (eg, DBT+mammo)? [YES/NO]    !!DBTv1.4!!
     if (0==strncmp("YE",new_line,2) || 0==strncmp("Ye",new_line,2) || 0==strncmp("ye",new_line,2))
       *flag_simulateMammoAfterDBT = true;
     else if (0==strncmp("NO",new_line,2) || 0==strncmp("No",new_line,2) || 0==strncmp("no",new_line,2))
@@ -1984,7 +1984,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   //    Usually the doses will be acceptable for photon energies below 1 MeV. The dose estimates may not be accurate at the interface of low density volumes.
   do
   {
-    new_line_ptr = fgets(new_line, 250, file_ptr);
+    new_line_ptr = fgets(new_line, 400, file_ptr);
     if (new_line_ptr==NULL)
     {
       printf("\n\n   !!read_input ERROR!! Input file is not readable or does not contain the string \'SECTION DOSE DEPOSITION v.2012-12-12\'!!\n");
@@ -2001,7 +2001,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   while(strstr(new_line,"SECTION DOSE DEPOSITION v.2012-12-12")==NULL);  // Skip comments and empty lines until the section begins
     
 
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);   // TALLY MATERIAL DOSE? [YES/NO]  --> turn on/off the material dose tallied adding the Edep in each material, independently of the voxels.
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);   // TALLY MATERIAL DOSE? [YES/NO]  --> turn on/off the material dose tallied adding the Edep in each material, independently of the voxels.
   if (0==strncmp("YE",new_line,2) || 0==strncmp("Ye",new_line,2) || 0==strncmp("ye",new_line,2))
   {
     *flag_material_dose = 1;
@@ -2021,15 +2021,15 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     exit(-2);
   }        
 
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);   // TALLY 3D VOXEL DOSE? [YES/NO] 
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);   // TALLY 3D VOXEL DOSE? [YES/NO] 
 
   if (0==strncmp("YE",new_line,2) || 0==strncmp("Ye",new_line,2) || 0==strncmp("ye",new_line,2))
   {
     // -- YES: using the tally
-    new_line_ptr = fgets_trimmed(new_line, 250, file_ptr); trim_name(new_line, file_dose_output);   // OUTPUT DOSE FILE NAME (no spaces)
-    new_line_ptr = fgets_trimmed(new_line, 250, file_ptr); sscanf(new_line, "%hd %hd", dose_ROI_x_min, dose_ROI_x_max);   // # VOXELS TO TALLY DOSE: X-index min max (first voxel has index 1)
-    new_line_ptr = fgets_trimmed(new_line, 250, file_ptr); sscanf(new_line, "%hd %hd", dose_ROI_y_min, dose_ROI_y_max);   // # VOXELS TO TALLY DOSE: Y-index min max
-    new_line_ptr = fgets_trimmed(new_line, 250, file_ptr); sscanf(new_line, "%hd %hd", dose_ROI_z_min, dose_ROI_z_max);   // # VOXELS TO TALLY DOSE: Z-index min max
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr); trim_name(new_line, file_dose_output);   // OUTPUT DOSE FILE NAME (no spaces)
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr); sscanf(new_line, "%hd %hd", dose_ROI_x_min, dose_ROI_x_max);   // # VOXELS TO TALLY DOSE: X-index min max (first voxel has index 1)
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr); sscanf(new_line, "%hd %hd", dose_ROI_y_min, dose_ROI_y_max);   // # VOXELS TO TALLY DOSE: Y-index min max
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr); sscanf(new_line, "%hd %hd", dose_ROI_z_min, dose_ROI_z_max);   // # VOXELS TO TALLY DOSE: Z-index min max
 
     *dose_ROI_x_min -= 1; *dose_ROI_x_max -= 1;  // -Re-scale input coordinates to have index=0 for the first voxel instead of 1.
     *dose_ROI_y_min -= 1; *dose_ROI_y_max -= 1;
@@ -2077,7 +2077,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   // -- Init. [SECTION VOXELIZED GEOMETRY FILE v.2017-07-26]  // !!v1.5bitree!!     // 2016-12-02]  // !!DBTv1.4!!   // Previous version: v.2009-11-30
   do
   {
-    new_line_ptr = fgets(new_line, 250, file_ptr);
+    new_line_ptr = fgets(new_line, 400, file_ptr);
     if (new_line_ptr==NULL)
     {
       printf("\n\n   !!read_input ERROR!! Input file is not readable or does not contain the string \'SECTION VOXELIZED GEOMETRY FILE v.2017-07-26\'!!\n");
@@ -2085,25 +2085,25 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     }
   }
   while(strstr(new_line,"SECTION VOXELIZED GEOMETRY FILE v.2017-07-26")==NULL);   // Skip comments and empty lines until the section begins
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     trim_name(new_line, file_name_voxels);   // VOXEL GEOMETRY FILE (penEasy 2008 format)
     
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f %f %f", &voxel_data->offset.x, &voxel_data->offset.y, &voxel_data->offset.z);   // OFFSET OF THE VOXEL GEOMETRY (DEFAULT ORIGIN AT LOWER BACK CORNER) [cm]     !!DBTv1.4!!
 
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%d %d %d", &voxel_data->num_voxels.x, &voxel_data->num_voxels.y, &voxel_data->num_voxels.z);   // NUMBER OF VOXELS: INPUT A "0" TO READ ASCII FORMAT WITH HEADER SECTION, RAW VOXELS WILL BE READ OTHERWISE     !!DBTv1.4!!
     if (voxel_data->num_voxels.x<1 || voxel_data->num_voxels.y<1 || voxel_data->num_voxels.z<1)
       voxel_data->num_voxels.x = -1;  // Indicate to read ASCII format geometry: geometric parameters will be read from the header file      !!DBTv1.4!! !!DeBuG!!
   
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f %f %f", &voxel_data->voxel_size.x, &voxel_data->voxel_size.y, &voxel_data->voxel_size.z);   // VOXEL SIZES [cm]     !!DBTv1.4!!
     voxel_data->inv_voxel_size.x = 1.0f/voxel_data->voxel_size.x;
     voxel_data->inv_voxel_size.y = 1.0f/voxel_data->voxel_size.y;
     voxel_data->inv_voxel_size.z = 1.0f/voxel_data->voxel_size.z;
 
   int split_x=-1, split_y=-1, split_z=-1;
-  new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);                         //!!bitree!! v1.5b
+  new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);                         //!!bitree!! v1.5b
     sscanf(new_line, "%d %d %d", &split_x, &split_y, &split_z);   // SIZE OF LOW RESOLUTION VOXELS THAT WILL BE DESCRIBED BY A BINARY TREE, GIVEN AS POWERS OF TWO (eg, 2 2 3 = 2^2x2^2x2^3 = 128 input voxels per low res voxel; 0 0 0 disables tree)    //!!bitre!! v1.5b
 
   if( (split_x+split_y+split_z)==0 || split_x<0 || split_y<0 || split_z<0)
@@ -2129,24 +2129,144 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   // -- Init. [SECTION MATERIAL FILE LIST v.2009-11-30]
   do
   {
-    new_line_ptr = fgets(new_line, 250, file_ptr);
+    new_line_ptr = fgets(new_line, 400, file_ptr);
     if (new_line_ptr==NULL)
     {
-      printf("\n\n   !!read_input ERROR!! Input file is not readable or does not contain the string \'SECTION MATERIAL FILE LIST v.2009-11-30\'!!\n");
+      printf("\n\n   !!read_input ERROR!! Input file is not readable or does not contain the string \'SECTION MATERIAL FILE LIST v.2009-11-30 (or v.2020-03-03)\'!!\n");
       exit(-2);
     }
   }
-  while(strstr(new_line,"SECTION MATERIAL FILE LIST v.2009-11-30")==NULL);   // Skip comments and empty lines until the section begins
+  while(strstr(new_line,"SECTION MATERIAL FILE LIST v.2009-11-30")==NULL && strstr(new_line,"SECTION MATERIAL FILE LIST v.2020-03-03")==NULL);   // Skip comments and empty lines until the section begins   // !!inputDensity!! Changes started on 2020-03-03 [Andreu Badal]
 
-  int i;
+  int i, flag_voxelId=0, flag_densityId=0;
+  
+  for (i=0; i<256; i++)
+    voxelId[i]=-1;           // Init voxel-to-material conversion table in global variable
+  
   for (i=0; i<MAX_MATERIALS; i++)
   {
-    new_line_ptr = fgets_trimmed(new_line, 250, file_ptr);
+    density_LUT[i]=-1.0f;    // Init material density global variable    
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     if (new_line_ptr==NULL)
       file_name_materials[i][0]='\n';   // The input file is allowed to finish without defining all the materials
     else
-      trim_name(new_line, file_name_materials[i]);
+    {
+    
+      // -- Read material file name:
+      trim_name(new_line, file_name_materials[i]);    
+
+      
+      // !!inputDensity!! Allowing users to overwrite the nominal material density in the input material file and list the voxel numbers corresponding to the material in the voxel file (conversion table):
+    
+      // -- Read the input material density (if given):
+      char densityStr[]="density=";
+      char *pch = strstr(new_line,densityStr);
+      if (pch!=NULL)
+      {
+        pch += strlen(densityStr);    // Skip label characters
+        int dummy = sscanf(pch, "%f", &density_LUT[i]);
+        
+        if (density_LUT[i]>0.0f)
+          flag_densityId++;   // Mark that a density has been input.
+        
+        
+//         if (dummy>0 && density_LUT[i]>0.0f)
+//             printf("\tdensity=%f\n",density_LUT[i]);
+//           else
+//             printf("\tNo density given for material %d (using nominal value from file).\n", i);
+      }
+//       else
+//         printf("\tNo density given for material %d (using nominal value from file).\n", i);
+      
+
+      // -- Read the voxel ID numbers for the current material (if given):
+      char voxelStr[]="voxelId=";
+        //strcpy (new_line_tmp,new_line);   // Using a copy of the new line because strtok will insert end-of-string characters between tokens.   
+      pch = strstr(new_line,voxelStr);
+      if (pch!=NULL)
+      {
+        pch += strlen(voxelStr);    // Skip label characters
+        pch = strtok(pch,",");      // Get first token before comma (or single token at current location if no comma)
+        while (pch != NULL)
+        {
+          int id=-1;
+          int dummy = sscanf(pch, "%d", &id);
+          if (dummy>0 && id>=0 && id<256)
+          {
+            voxelId[id]=i;    // Assign current material to item number id in voxel-to-material conversion table (valid id from 0 to 255; 1 byte).
+            flag_voxelId++;   // Mark that at voxelId has been used.
+//             MASTER_THREAD printf("\tid=%d\n",id);
+          }
+          else if (id<-1 || id>255)
+          {
+            MASTER_THREAD printf("\n\n   !!read_input ERROR!! Input voxelID values must be between 0 and 255 (unsigned char)! Value read for material %d: %d\n\n",i,id);
+            exit(-2);
+          }
+//           else
+//             MASTER_THREAD printf("\tNo voxelID given for this material.\n");
+            
+          pch = strtok (NULL, ",");   // Get following tokens after comma
+        }
+      }
+//       else
+//         MASTER_THREAD printf("\tNo voxelID given for this material.\n");
+    
+    }  
   }
+  
+  
+  // -- Use the VICTRE default voxel conversion table if no voxelId labels were input (keeping compatibility with older VICTRE input files):
+  if (0==flag_voxelId)
+  {
+    voxelId[  0]= 0;  // ==Air
+    voxelId[  1]= 1;  // ==fat
+    voxelId[  2]= 2;  // ==skin
+    voxelId[ 29]= 3;  // ==glandular
+    voxelId[ 33]= 4;  // ==nipple
+    voxelId[ 40]= 6;  // ==muscle
+    voxelId[ 50]=10;  // ==Compression Paddle
+    voxelId[ 65]=13;  // ==Tungsten (bar patterns, MTF edge)
+    voxelId[ 66]=14;  // ==a-Se (bar patterns)
+    voxelId[ 88]= 5;  // ==ligament(88)
+    voxelId[ 95]= 9;  // ==terminal duct lobular unit(95)
+    voxelId[125]= 7;  // ==duct(125)
+    voxelId[150]= 8;  // ==artery(150)
+    voxelId[200]=11;  // ==Mass/Signal
+    voxelId[225]= 8;  // ==vein(225)
+    voxelId[250]=12;  // ==Microcalcification
+    
+    // -- Use the VICTRE default densities if no voxelId and densities were given in the input file:
+    if (0==flag_densityId)
+    {
+      density_LUT[ 0]=0.00120f;
+      density_LUT[ 1]=0.920f;
+      density_LUT[ 2]=1.090f;
+      density_LUT[ 3]=1.035f;
+      density_LUT[ 4]=1.090f;
+      density_LUT[ 5]=1.120f;
+      density_LUT[ 6]=1.050f;
+      density_LUT[ 7]=1.050f;
+      density_LUT[ 8]=1.000f;
+      density_LUT[ 9]=1.050f;
+      density_LUT[10]=1.060f;
+      density_LUT[11]=1.060f;
+      density_LUT[12]=1.781f;
+      density_LUT[13]=19.30f;
+      density_LUT[14]=4.50f;
+    }
+  }
+
+  // Report the input (or default) conversion table:
+  MASTER_THREAD printf("       Voxel value to Monte Carlo material number conversion table (material number corresponds to order in input file):\n");
+  for (i=0; i<256; i++)
+  {
+    if (voxelId[i]>=0)
+      MASTER_THREAD printf("\t\tvoxelId = %d  -->  Material = %d\n", i, voxelId[i]+1);
+  }
+  MASTER_THREAD printf("\n"); 
+  MASTER_THREAD fflush(stdout);  
+  
+  
   // [Finish reading input file]
   
   
@@ -2264,7 +2384,7 @@ void trim_name(char* input_line, char* file_name)
 ////////////////////////////////////////////////////////////////////////////////
 char* fgets_trimmed(char* trimmed_line, int num, FILE* file_ptr)
 {
-  char  new_line[250];
+  char  new_line[400];
   char *new_line_ptr = NULL;
   int a=0, b=0;
   trimmed_line[0] = '\0';   //  Init with a mark that means no file input
@@ -2563,9 +2683,27 @@ void load_material(int myID, char file_name_materials[MAX_MATERIALS][250], float
     new_line_ptr = gzgets(file_ptr, new_line, 250);   //  !!zlib!!
     sscanf(new_line, "# %f", &density_nominal[mat]);
     
-    if (density_max[mat]>0)    //  Material found in the voxels
+    
+    // !!inputDensity!! Using the material density given in the input file, or the nominal material density if no density input:
+    
+    if (density_max[mat]>0.0f)
     {
-      MASTER_THREAD printf("                Nominal density = %f g/cm^3; Max density in voxels = %f g/cm^3\n", density_nominal[mat], density_max[mat]);
+      // Material density read from a text-based (no binary) input geometry:
+      density_LUT[mat] = density_max[mat];
+      
+      MASTER_THREAD printf("                Nominal density = %f g/cm^3; Density in voxels = %f g/cm^3\n", density_nominal[mat], density_max[mat]);
+    }
+    else if (density_max[mat]>-2.0f)    
+    {
+      // Material found in a binary voxel file:   
+      
+      // Use the nominal material density if no alternative density input by the user:
+      if (density_LUT[mat]<1.0e-20f)
+        density_LUT[mat] = density_nominal[mat];
+        
+      density_max[mat] = density_LUT[mat];
+      
+      MASTER_THREAD printf("                Nominal density = %f g/cm^3; Density used in voxels = %f g/cm^3\n", density_nominal[mat], density_max[mat]);
     }
     else                       //  Material NOT found in the voxels
     {
@@ -2983,9 +3121,9 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
   checkCudaErrors(cudaMemcpyToSymbol(dose_ROI_z_min_CONST, dose_ROI_z_min, sizeof(short int)));
   checkCudaErrors(cudaMemcpyToSymbol(dose_ROI_z_max_CONST, dose_ROI_z_max, sizeof(short int)));
   
+  checkCudaErrors(cudaMemcpyToSymbol(density_LUT_CONST, &density_LUT, MAX_MATERIALS*sizeof(float)));   // !!inputDensity!! store density look-up table in GPU constant memory 
 
-
-  double total_mem = sizeof(struct voxel_struct)+sizeof(struct source_struct)+sizeof(struct detector_struct)+sizeof(struct linear_interp) + 6*sizeof(short int);
+  double total_mem = sizeof(struct voxel_struct)+sizeof(struct source_struct)+sizeof(struct detector_struct)+sizeof(struct linear_interp) + 6*sizeof(short int) + MAX_MATERIALS*sizeof(float);
   MASTER_THREAD printf("       ==> CUDA: Constant data successfully copied to the device. CONSTANT memory used: %lf kbytes (%.1lf%%)\n", total_mem/1024.0, 100.0*total_mem/deviceProp.totalConstMem);
   
 
@@ -3084,7 +3222,7 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
   // Init materials_dose array in GPU with 0 (same as host):
   if (flag_material_dose==1)
     checkCudaErrors(cudaMemcpy(*materials_dose_device, materials_dose, MAX_MATERIALS*sizeof(ulonglong2), cudaMemcpyHostToDevice));   // !!tally_materials_dose!!
-  
+    
   MASTER_THREAD printf("                 Time spent allocating and copying memory to the device: %.6f s\n", float(clock()-clock_init)/CLOCKS_PER_SEC);    
 
 }
@@ -3604,9 +3742,9 @@ int report_voxels_dose(char* file_dose_output, int num_projections, struct voxel
 //         register int mat_number = (int)(voxel_mat_dens[voxel_geometry].x) - 1 ;  // Material number, starting at 0.
 //         mat_mass_ROI[mat_number]  += voxel_mat_dens[voxel_geometry].y*voxel_volume;   // Estimate mass and energy deposited in this material
         
-        register double inv_voxel_mass = 1.0 / (density_LUT((int)voxel_mat_dens[voxel_geometry])*voxel_volume);       //!!FixedDensity_DBT!! Density taken from function "density_LOT"
+        register double inv_voxel_mass = 1.0 / (density_LUT[(int)voxel_mat_dens[voxel_geometry]]*voxel_volume);       //!!FixedDensity_DBT!! Density taken from function "density_LOT"
         register int mat_number = (int)(voxel_mat_dens[voxel_geometry]);  // Material number, starting at 0.      //!!FixedDensity_DBT!!
-        mat_mass_ROI[mat_number]  += density_LUT((int)voxel_mat_dens[voxel_geometry])*voxel_volume;   // Estimate mass and energy deposited in this material    //!!FixedDensity_DBT!! Density taken from function "density_LOT"
+        mat_mass_ROI[mat_number]  += density_LUT[(int)voxel_mat_dens[voxel_geometry]]*voxel_volume;   // Estimate mass and energy deposited in this material    //!!FixedDensity_DBT!! Density taken from function "density_LOT"
         
 
         mat_Edep[mat_number]  += (double)voxels_Edep[voxel].x;        // Using doubles to avoid overflow

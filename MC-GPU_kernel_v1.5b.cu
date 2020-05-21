@@ -101,6 +101,7 @@ void init_image_array_GPU(unsigned long long int* image, int pixels_per_image)
 //!           voxel_data_CONST, 
 //!           source_energy_data_CONST
 //!           mfp_table_data_CONST.
+//!           density_LUT_CONST
 //!
 //!       @param[in] history_batch  Particle batch number (only used in the CPU version when CUDA is disabled!, the GPU uses the built-in variable threadIdx)
 //!       @param[in] num_p  Projection number in the CT simulation. This variable defines a specific angle and the corresponding source and detector will be used.
@@ -294,9 +295,8 @@ __global__ void track_particles(int histories_per_thread,
         }
         
         // *** Apply Woodcock tracking:
-          //         mfp_density = mfp_Woodcock * matdens.y;
-        mfp_density = mfp_Woodcock * density_LUT(material0);      //!!FixedDensity_DBT!! Density taken from function "density_LUT"
-        
+
+        mfp_density = mfp_Woodcock * density_LUT_CONST[material0];      //!!FixedDensity_DBT!! Density taken from constant memory array "density_LUT_CONST"; Old: mfp_density=mfp_Woodcock*matdens.y;
         
         // -- Calculate probability of delta scattering, using the total mean free path for the current material and energy (linear interpolation):
         prob = 1.0f - mfp_density * (mfp_table_read_a.x + energy * mfp_table_read_b.x);
@@ -1524,6 +1524,10 @@ void tally_materials_dose(float* Edep, int* material, ulonglong2* materials_dose
 }
 
 
+
+// !!inputDensity!! Replacing the density_LUT function with a hardcoded look-up table for an array in RAM or GPU constant memory:
+
+/*
 ////////////////////////////////////////////////////////////////////////////////
 //!  Look up table that returns the pre-defined density of the input material.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1586,8 +1590,7 @@ inline float density_LUT(int material)                                          
   
   return density;
 }
-
-
+*/
 
 
 
