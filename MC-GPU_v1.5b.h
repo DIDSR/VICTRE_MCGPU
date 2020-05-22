@@ -33,20 +33,15 @@
 // have been modified.
 //                                                                            
 //
-//!                     @file    MC-GPU_v1.4.h
-//!                     @author  Andreu Badal (Andreu.Badal-Soler@fda.hhs.gov)
-//!                     @date    2012/12/12
-//                      Older versions: 2010/05/14
+//!                     @file    MC-GPU_v1.5b.h
+//!                     @author  Andreu Badal (Andreu.Badal-Soler{at}fda.hhs.gov)
+//!                     @date    2018/01/01
 //
 ////////////////////////////////////////////////////////////////////////////////
 
 
 #ifndef MCGPU_H_
 #define MCGPU_H_
-
-
-// *** To use CUDA, compile with "-DUSING_CUDA" or uncomment the following line:
-//#define USING_CUDA
 
 // *** To use MPI to simulate multiple CT projections in different GPUs compile with "-DUSING_MPI" or uncomment the following line:
 //#define USING_MPI
@@ -58,8 +53,10 @@
 //! Maximum number of projections allowed in the CT simulation (not limited by the constant memory because stored in global and shared memory):
 #define  MAX_NUM_PROJECTIONS  720
 
-//! Constants values for the Compton and Rayleigh models:
+//! Maximum number of materials allowed in the input file.
 #define  MAX_MATERIALS      15
+
+//! Constants values for the Compton and Rayleigh models:
 #define  MAX_SHELLS         30
 #define  NP_RAYLEIGH       128
 #define  MAX_ENERGYBINS_RAYLEIGH  25005
@@ -93,9 +90,7 @@
 //! The largest unsigned int value will mark that a particle escaped the voxelized region.
 #define FLAG_OUTSIDE_VOXELS 4294967295
 
-
-
-//! Scaling of the number of histories between the single projection and the tomo scan when "flag_simulateMammoAfterDBT==true":     !!DBTv1.4!!
+//! Scaling factor for the total number of histories in a mammography projection versus all tomosynthesis projections. Used when flag_simulateMammoAfterDBT is true.
 #define SCALE_MAMMO_DBT (2.0/3.0)
 
 //! Preprocessor macro to calculate maximum and minimum values:
@@ -111,65 +106,46 @@
 #include <time.h>
 #include <stdbool.h>
 #include "zlib.h"    // Library used to read gzip material and voxel files (non-compressed files can also be read). Compile with option -lz
-
-
-float density_LUT[MAX_MATERIALS];                       // !!inputDensity!! Storing the material densities (nominal or user-input) in a global array in CPU and in constant memory in GPU
-int voxelId[256];                                       // !!inputDensity!! Storing the voxel-to-material conversion table in a global array.
-__constant__ float density_LUT_CONST[MAX_MATERIALS];    // !!inputDensity!! Density look-up table in GPU constant memory
-
-
-#ifdef USING_CUDA
-// Include CUDA functions:
-
-  // CUDA runtime
-  #include <cuda_runtime.h>
-  // Helper functions and utilities to work with CUDA
-  #include <helper_functions.h>
-
-   // !!DEBUG!! CUDA 5.0: USING ONLY CPU TIMERS. Remove:  #include <cutil_inline.h>
-  #include <helper_cuda.h>
-
-
-//   #include <timer.h>  // !!DEBUG!!   Not necessary??
-
-  #include <vector_types.h>
-
-#else
-  // Include the definition of the vector structures (float3, int2...) that are useful in the GPU (multiple values can be read simultaneously from the slow main memory):
-  struct int2  { int x, y; };         typedef struct int2 int2;
-  struct int3  { int x, y, z; };      typedef struct int3 int3;
-  struct float2 { float x, y; };      typedef struct float2 float2;
-  struct float3 { float x, y, z; };   typedef struct float3 float3;
-  struct double2 { double x, y; };    typedef struct double2 double2;
-  struct double3 { double x, y, z; }; typedef struct double3 double3;
-  struct short3 { short x, y, z; };   typedef struct short3 short3;  
-  struct ulonglong2 { unsigned long long int x, y; }; typedef struct ulonglong2 ulonglong2;
-  struct uchar3 {unsigned char x, y, z; }; typedef struct uchar3 uchar3;
-#endif
-  
-
-
 #ifdef USING_MPI
-// Include MPI functions:
   #include <mpi.h>
 #endif
 
+// Include CUDA runtime and helper functions:
+#include <cuda_runtime.h>
+#include <helper_functions.h>
+#include <helper_cuda.h>
+#include <vector_types.h>
+
+
+float density_LUT[MAX_MATERIALS];                     // Storing the material densities (nominal or user-input) in a global array in CPU and in constant memory in GPU
+int voxelId[256];                                     // Storing the voxel-to-material conversion table in a global array.
+__constant__ float density_LUT_CONST[MAX_MATERIALS];  // Density look-up table in GPU constant memory
+
+
+// - Definition of the vector structures used in the GPU for CPU use:
+//   struct int2  { int x, y; };         typedef struct int2 int2;
+//   struct int3  { int x, y, z; };      typedef struct int3 int3;
+//   struct float2 { float x, y; };      typedef struct float2 float2;
+//   struct float3 { float x, y, z; };   typedef struct float3 float3;
+//   struct double2 { double x, y; };    typedef struct double2 double2;
+//   struct double3 { double x, y, z; }; typedef struct double3 double3;
+//   struct short3 { short x, y, z; };   typedef struct short3 short3;  
+//   struct ulonglong2 { unsigned long long int x, y; }; typedef struct ulonglong2 ulonglong2;
+//   struct uchar3 {unsigned char x, y, z; }; typedef struct uchar3 uchar3;
+ 
 
 
 // MC-GPU structure declarations:
 
 //! Structure storing the data defining the source model (except for the energy spectrum).
 //! When a CT is simulated, multiple sources will be stored in an array (one source instance per projection angle).
-struct
-#ifdef USING_CUDA
-  __align__(16)
-#endif
+struct __align__(16) 
 source_struct       // Define a cone beam x-ray source.
 {
   float3 position,            // Input focal spot position at angle 0
-         rotation_point,      // Center of rotation for the source in a tomographic acquisition (input source location and direction multiplied by source-detector dist)  !!DBTv1.4!!
-         axis_of_rotation,    // If tomographic acquisition, axis of rotation for the source (perpendicular to the source-detector vector)                                !!DBTv1.4!!
-         direction;  //!!DBTv1.4!! The actual source direction is not really used in the kernel, the rot_fan rotation is applied to the sampled direction around (0,1,0)
+         rotation_point,      // Center of rotation for the source in a tomographic acquisition: input source location and direction multiplied by source-detector dist
+         axis_of_rotation,    // If tomographic acquisition, axis of rotation for the source (perpendicular to the source-detector vector)
+         direction;           // The actual source direction is not really used in the kernel, the rot_fan rotation is applied to the sampled direction around (0,1,0)
   float rot_fan[9],      // Rotation (from axis (0,1,0)) defined by the source direction (needed by the fan beam source; its inverse is used by the detector).
         cos_theta_low,   // Angles for the fan beam model (pyramidal source).
         phi_low,
@@ -179,24 +155,21 @@ source_struct       // Define a cone beam x-ray source.
         max_width_at_y1cm,
         focal_spot_FWHM,
         rotation_blur,
-        angle_offset,         // Angular rotation to first projection (input source direction considered as 0 degrees; typically negative offset for DBT)  
+        angle_offset,         // Angular rotation to first projection (input source direction considered as 0 degrees; typically negative offset for DBT)
         angle_per_projection; // Angle increment between projections
-  bool flag_halfConeX;        // For a DBT acquisition, block the cone beam towards negative X (ie, beam axis aligned to chest wall)  !!DBTv1.4!!
+  bool flag_halfConeX;        // For a DBT acquisition, block the cone beam towards negative X (ie, beam axis aligned to chest wall)
 };
 
 
 //! Structure storing the data defining the x-ray detector. 
 //! For a CT, the struct stores for each angle the detector location and the rotations to
 //! transport the detector to a plane perpendicular to +Y.
-//! To simulate multiple projections, an array of MAX_NUM_PROJECTIONS of instances of this struct have to be defined!  !!DeBuG!! shared
-struct
-#ifdef USING_CUDA
-  __align__(16)
-#endif
+//! To simulate multiple projections, an array of MAX_NUM_PROJECTIONS of instances of this struct have to be defined.
+struct __align__(16) 
 detector_struct         // Define a 2D detector plane, located in front of the defined source (centered at the focal spot and perpendicular to the initial direction).
 {                       // The radiograohic image will be stored in the global variable "unsigned long long int *image".
   float3 center;
-  float2 offset;  // Offset of the image on the detector plane (width, height directions) wrt the default position with beam center at center of image.  !!DBTv1.4!!
+  float2 offset;  // Offset of the image on the detector plane (width, height directions) wrt the default position with beam center at center of image.
 
   float rot_inv[9],    // Rotation to transport a particle on the detector plane to a frame where the detector is perpendicular to +Y.
         width_X,
@@ -204,33 +177,30 @@ detector_struct         // Define a 2D detector plane, located in front of the d
         inv_pixel_size_X,
         inv_pixel_size_Z,
         sdd,                            // Store the source-detector distance
-        scintillator_MFP,           // !!DBTv1.4!!
+        scintillator_MFP,
         scintillator_thickness,
         kedge_energy,
         fluorescence_yield,
         fluorescence_energy,
         fluorescence_MFP,
-        cover_thickness,            // !!DBTv1.5!!
+        cover_thickness,
         cover_MFP,
-        grid_freq,                  // !!DBTv1.5!! 
+        grid_freq,
         grid_ratio,                     // Grid orientation encoded in this variable: <0 --> 0: strips parallel to image width, >0 --> 1: strips parallel to image height
         grid_strip_thickness,
         grid_strip_mu,                  // Coefficient of attenuation for the attenuating strips and the interspace material [1/cm]
         grid_interspace_mu,
-        gain_W,                     // !!DBTv1.5a!!   // !!DeBuG!! this value is not used in the kernel, but still copied to GPU memory
-        Swank_rel_std,                                // !!DeBuG!! this value is not used in the kernel, but still copied to GPU memory
-        electronic_noise;                             // !!DeBuG!! this value is not used in the kernel, but still copied to GPU memory  
-        
+        gain_W,                         // Note: the folowing 3 values are not used in the kernel, but still copied to GPU memory
+        Swank_rel_std,
+        electronic_noise;
+
   int2 num_pixels;
   int total_num_pixels;       
 };
 
 
 //! Structure storing the source energy spectrum data to be sampled using the Walker aliasing algorithm.
-struct
-#ifdef USING_CUDA
-  __align__(16)
-#endif
+struct __align__(16) 
 source_energy_struct       // Define a cone beam x-ray source.
 {  
   int num_bins_espc;                     // Number of bins in the input energy spectrum
@@ -241,27 +211,21 @@ source_energy_struct       // Define a cone beam x-ray source.
 
 
 //! Structure defining a voxelized box with the back-lower corner at the coordinate origin.
-struct
-#ifdef USING_CUDA
-  __align__(16)
-#endif
+struct __align__(16) 
 voxel_struct                     // Define a voxelized box with the back-lower corner at the coordinate origin.
 {                                // Voxel material and densities are stored in a local variable.
   int3 num_voxels;
   float3 inv_voxel_size,
-         voxel_size,                                                                                                       // !!bitree!! v1.5b 
+         voxel_size,
          size_bbox,
-         offset,                 // Offset of voxel geometry (default origin at lower back corner)    !!DBTv1.4!!
+         offset,                 // Offset of voxel geometry (default origin at lower back corner)
          voxel_size_HiRes;
-  uchar3 num_voxels_coarse;      // Store the size of the coarse voxels that will be described by a binary tree               !!bitree!! v1.5b 
+  uchar3 num_voxels_coarse;      // Store the size of the coarse voxels that will be described by a binary tree
 };
 
 
 //! Structure with the basic data required by the linear interpolation of the mean free paths: number of values and energy grid.
-struct
-#ifdef USING_CUDA
-  __align__(16)
-#endif
+struct __align__(16) 
 linear_interp       // Constant data for linear interpolation of mean free paths
 {                                        // The parameters 'a' and 'b' are stored in local variables float4 *a, *b;
   int num_values;      // -->  Number of iterpolation points (eg, 2^12 = 4096).
@@ -271,10 +235,7 @@ linear_interp       // Constant data for linear interpolation of mean free paths
 
 
 //! Structure storing the data of the Compton interaction sampling model (equivalent to PENELOPE's common block /CGCO/).
-struct
-#ifdef USING_CUDA
-  __align__(16)
-#endif
+struct __align__(16) 
 compton_struct      // Data from PENELOPE's common block CGCO: Compton interaction data
 {
   float fco[MAX_MATERIALS*MAX_SHELLS],
@@ -284,10 +245,7 @@ compton_struct      // Data from PENELOPE's common block CGCO: Compton interacti
 };
 
 //! Structure storing the data of the Rayleigh interaction sampling model (equivalent to PENELOPE's common block /CGRA/).
-struct
-#ifdef USING_CUDA
-  __align__(16)
-#endif
+struct __align__(16) 
 rayleigh_struct
 {
   float xco[NP_RAYLEIGH*MAX_MATERIALS],
@@ -317,12 +275,9 @@ void IRND0(float *W, float *F, short int *K, int N);
 int report_materials_dose(int num_projections, unsigned long long int total_histories, float *density_nominal, ulonglong2 *materials_dose, double *mass_materials, char file_name_materials[MAX_MATERIALS][250]);
 
 
-// #ifdef USING_CUDA
-//   __host__ __device__     // Enable this code to be able to call the function from the host (CPU) and also from the device (GPU).
-// #endif
 int seeki_walker(float *cutoff, short int *alias, float randno, int n);   // (This function is not actually called in the code.)
 
-#ifdef USING_CUDA
+
 int guestimate_GPU_performance(int gpu_id);
 void init_CUDA_device( int* gpu_id, int myID, int numprocs,
       /*Variables to GPU constant memory:*/ struct voxel_struct* voxel_data, struct source_struct* source_data, struct source_energy_struct* source_energy_data, struct detector_struct* detector_data, struct linear_interp* mfp_table_data,
@@ -336,7 +291,6 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
         struct detector_struct** detector_data_device, struct source_struct** source_data_device,
         ulonglong2* voxels_Edep, ulonglong2** voxels_Edep_device, int voxels_Edep_bytes, short int* dose_ROI_x_min, short int* dose_ROI_x_max, short int* dose_ROI_y_min, short int* dose_ROI_y_max, short int* dose_ROI_z_min, short int* dose_ROI_z_max,
         ulonglong2* materials_dose, ulonglong2** materials_dose_device, int flag_material_dose, int** seed_input_device, int* seed_input, int num_projections);
-#endif
 
 
 
@@ -345,159 +299,61 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
 // -- Constant memory (defined as global variables):
 
 //! Global variable to be stored in the GPU constant memory defining the coordinates of the dose deposition region of interest.
-#ifdef USING_CUDA
-__constant__
-#endif
-short int dose_ROI_x_min_CONST, dose_ROI_x_max_CONST, dose_ROI_y_min_CONST, dose_ROI_y_max_CONST, dose_ROI_z_min_CONST, dose_ROI_z_max_CONST;
+__constant__ short int dose_ROI_x_min_CONST, dose_ROI_x_max_CONST, dose_ROI_y_min_CONST, dose_ROI_y_max_CONST, dose_ROI_z_min_CONST, dose_ROI_z_max_CONST;
 
 //! Global variable to be stored in the GPU constant memory defining the size of the voxel phantom.
-#ifdef USING_CUDA
-__constant__
-#endif
-struct voxel_struct    voxel_data_CONST;      // Define the geometric constants
+__constant__ struct voxel_struct    voxel_data_CONST;      // Define the geometric constants
 
 //! Global variable to be stored in the GPU constant memory defining the linear interpolation data.
-#ifdef USING_CUDA
-__constant__
-#endif
-struct linear_interp   mfp_table_data_CONST;  // Define size of interpolation arrays
+__constant__ struct linear_interp   mfp_table_data_CONST;  // Define size of interpolation arrays
 
 //! Global variable to be stored in the GPU constant memory defining the source energy spectrum.
-#ifdef USING_CUDA
-__constant__
-#endif
-struct source_energy_struct source_energy_data_CONST;
+__constant__ struct source_energy_struct source_energy_data_CONST;
 
 
 //// *** GLOBAL FUNCTIONS *** ////
 
-#ifdef USING_CUDA
-__global__
-void init_image_array_GPU(unsigned long long int* image, int pixels_per_image);
-__global__
-void init_dose_array_GPU(ulonglong2* voxels_Edep, int num_voxels_dose);
-#endif
-
-#ifdef USING_CUDA
-__global__
-void track_particles(int histories_per_thread, short int num_p, int* seed_input_device, unsigned long long int* image, ulonglong2* voxels_Edep, int* voxel_mat_dens, char* bitree, float2* mfp_Woodcock_table, float3* mfp_table_a, float3* mfp_table_b, struct rayleigh_struct* rayleigh_table, struct compton_struct* compton_table, struct detector_struct* detector_data_array, struct source_struct* source_data_array, ulonglong2* materials_dose);
-#else
-void track_particles(int history_batch, int histories_per_thread, short int num_p, int seed_input, unsigned long long int* image, ulonglong2* voxels_Edep, int* voxel_mat_dens, float2* mfp_Woodcock_table, float3* mfp_table_a, float3* mfp_table_b, struct rayleigh_struct* rayleigh_table, struct compton_struct* compton_table, struct detector_struct* detector_data_array, struct source_struct* source_data_array, ulonglong2* materials_dose);
-#endif
+__global__ void init_image_array_GPU(unsigned long long int* image, int pixels_per_image);
+__global__ void init_dose_array_GPU(ulonglong2* voxels_Edep, int num_voxels_dose);
+__global__ void track_particles(int histories_per_thread, short int num_p, int* seed_input_device, unsigned long long int* image, ulonglong2* voxels_Edep, int* voxel_mat_dens, char* bitree, float2* mfp_Woodcock_table, float3* mfp_table_a, float3* mfp_table_b, struct rayleigh_struct* rayleigh_table, struct compton_struct* compton_table, struct detector_struct* detector_data_array, struct source_struct* source_data_array, ulonglong2* materials_dose);
 
 
 //// *** DEVICE FUNCTIONS *** ////
 
+__device__ inline void tally_image(float* energy, float3* position, float3* direction, signed char* scatter_state, unsigned long long int* image, struct source_struct* source_data_SHARED, struct detector_struct* detector_data_SHARED, int2* seed);
+__device__ inline void source(float3* position, float3* direction, float* energy, int2* seed, unsigned int* absvox, struct source_struct* source_data_SHARED, struct detector_struct* detector_data_SHARED);
+__device__ inline void move_to_bbox(float3* position, float3* direction, unsigned int* intersection_flag);
+__device__ inline void init_PRNG(int history_batch, int histories_per_thread, int seed_input, int2* seed);
+__host__ __device__ inline int abMODm(int m, int a, int s);
+__device__ inline float ranecu(int2* seed);
+__device__ inline double ranecu_double(int2* seed);
+__host__ inline double ranecu_double_CPU(int2* seed);
+__device__ inline unsigned int locate_voxel(float3 position, short3* voxel_coord);
+__device__ inline void rotate_double(float3* direction, double cos_theta, double phi);
+__device__ inline void GRAa(float *energy, double *costh_Rayleigh, int *mat, float *pmax_current, int2 *seed, struct rayleigh_struct* cgra);
+__device__ inline void GCOa(float *energy, double *costh_Compton, int *mat, int2 *seed, struct compton_struct* cgco_SHARED);
+__device__ inline void tally_voxel_energy_deposition(float* Edep, short3* voxel_coord, ulonglong2* dose);
+__device__ inline void tally_materials_dose(float* Edep, int* material, ulonglong2* materials_dose);
 
-#ifdef USING_CUDA
-__device__
-#endif
-inline void tally_image(float* energy, float3* position, float3* direction, signed char* scatter_state, unsigned long long int* image, struct source_struct* source_data_SHARED, struct detector_struct* detector_data_SHARED, int2* seed);       //!!detectorModel!!
+__device__ inline float sample_gausspdf_below2sigma(int2 *seed);     // Return Gaussian distributed random value, with distribution cropped at 2 sigma.
+inline void gausspdf_double_CPU(double *g1, double *g2, int2 *seed); // Return two Gaussian distributed random values (as doubles).
+__device__ inline void gausspdf(float *g1, float *g2, int2 *seed);   // Return two Gaussian distributed random values (as floats).
 
-#ifdef USING_CUDA
-__device__
-#endif
-inline void source(float3* position, float3* direction, float* energy, int2* seed, unsigned int* absvox, struct source_struct* source_data_SHARED, struct detector_struct* detector_data_SHARED);
-#ifdef USING_CUDA
-__device__
-#endif
-inline void move_to_bbox(float3* position, float3* direction, unsigned int* intersection_flag);
-#ifdef USING_CUDA
-__device__
-#endif
-inline void init_PRNG(int history_batch, int histories_per_thread, int seed_input, int2* seed);
-#ifdef USING_CUDA
-__host__ __device__
-#endif
-inline int abMODm(int m, int a, int s);
-#ifdef USING_CUDA
-__device__
-#endif
-inline float ranecu(int2* seed);
-#ifdef USING_CUDA
-__device__
-#endif
-inline double ranecu_double(int2* seed);
-#ifdef USING_CUDA
-__host__
-#endif
-inline double ranecu_double_CPU(int2* seed);
-#ifdef USING_CUDA
-__device__
-#endif
-inline unsigned int locate_voxel(float3 position, short3* voxel_coord);
-#ifdef USING_CUDA
-__device__
-#endif
-inline void rotate_double(float3* direction, double cos_theta, double phi);
-#ifdef USING_CUDA
-__device__
-#endif
-inline void GRAa(float *energy, double *costh_Rayleigh, int *mat, float *pmax_current, int2 *seed, struct rayleigh_struct* cgra);
-#ifdef USING_CUDA
-__device__
-#endif
-inline void GCOa(float *energy, double *costh_Compton, int *mat, int2 *seed, struct compton_struct* cgco_SHARED);
+__device__ __host__ inline void rotate_around_axis_Rodrigues(float *angle, float3 *w, float3 *p);  // Rotate vector p around vector w the input angle using Rodrigues' formula: http://mathworld.wolfram.com/RodriguesRotationFormula.html
+__device__ __host__ inline void rotate_2vectors_around_axis_Rodrigues(float *angle, float3 *w, float3 *p, float3 *v);
+__device__ __host__ inline void apply_rotation(float3 *v, float *m);
 
-#ifdef USING_CUDA
-__device__
-#endif
-inline void tally_voxel_energy_deposition(float* Edep, short3* voxel_coord, ulonglong2* dose);
+void create_rotation_matrix_around_axis(float angle, float wx, float wy, float wz, float *m);
+inline void multiply_3x3(float *m_out, float *m, float *n);
 
-#ifdef USING_CUDA
-__device__
-#endif
-inline 
-void tally_materials_dose(float* Edep, int* material, ulonglong2* materials_dose);
+__device__ float antiscatter_grid_transmission_prob(float3* position, float3* direction, struct detector_struct* detector_data);
+__device__ int find_material_bitree(const float3* position, char* bitree, const int bitree_root_index, short3* voxel_coord);
 
-
-// !!inputDensity!! Replacing the density_LUT function with a hardcoded look-up table for an array in RAM or GPU constant memory:
-// #ifdef USING_CUDA
-// __device__ __host__
-// #endif
-// inline float density_LUT(int material);                  //!!FixedDensity_DBT!! 
-
-
-#ifdef USING_CUDA
-__device__
-#endif
-inline float sample_gausspdf_below2sigma(int2 *seed);    //!!DBTv1.4!! Return a Gaussian distributed random value, with the distribution cropped at 2 sigma.
-          // inline float sample_gausspdf(int2 *seed);   //!!DBTv1.4!! Return a Gaussian distributed random value.
-inline void gausspdf_double_CPU(double *g1, double *g2, int2 *seed);  //!!DBTv1.4!! Return two Gaussian distributed random values (as doubles).
-#ifdef USING_CUDA
-__device__
-#endif
-inline void gausspdf(float *g1, float *g2, int2 *seed);  //!!DBTv1.4!! Return two Gaussian distributed random values (as floats).
-
-#ifdef USING_CUDA
-__device__ __host__
-#endif
-inline void rotate_around_axis_Rodrigues(float *angle, float3 *w, float3 *p); //!!DBTv1.4!! Rotate vector p around vector w the input angle using Rodrigues' formula: http://mathworld.wolfram.com/RodriguesRotationFormula.html
-#ifdef USING_CUDA
-__device__ __host__
-#endif
-inline void rotate_2vectors_around_axis_Rodrigues(float *angle, float3 *w, float3 *p, float3 *v);
-#ifdef USING_CUDA
-__device__ __host__
-#endif
-inline void apply_rotation(float3 *v, float *m);   // !!DBTv1.4!!
-
-void create_rotation_matrix_around_axis(float angle, float wx, float wy, float wz, float *m); // !!DBTv1.4!!
-inline void multiply_3x3(float *m_out, float *m, float *n);                                   // !!DBTv1.4!!
-
-#ifdef USING_CUDA
-__device__
-#endif
-float antiscatter_grid_transmission_prob(float3* position, float3* direction, struct detector_struct* detector_data);        // !!DBTv1.5!!
-
-#ifdef USING_CUDA
-__device__
-#endif
-int find_material_bitree(const float3* position, char* bitree, const int bitree_root_index, short3* voxel_coord);
-
-// -- Include function to read phantom directly from binary form, with hardcoded conversion to materials and transformations:   !!DBT!!
-#include "load_voxels_binary_VICTRE_v1.5b.c"  //!!DBT!!   !!DBTv1.4!!   //!!detectorModel!!
+// -- Include function to read phantom directly from binary form:
+#include "load_voxels_binary_VICTRE_v1.5b.c"
 
 
 // -- END OF THE "ifndef MCGPU_H_" statement:
 #endif
+
+
