@@ -1,9 +1,42 @@
 
-// Auxiliary function for the VICTRE DBT simulations: read external voxelized phantom as unsigned char values; reasign material numbers to match MC materials
-
-
-
-// #include "MC-GPU_v1.5b.h"
+////////////////////////////////////////////////////////////////////////////////
+//
+//              ****************************
+//              *** MC-GPU, version 1.5b ***
+//              ****************************
+//                                          
+//!  Auxiliary functions for the VICTRE DBT simulations using a binary geometry
+//!  and a binary tree structure: 
+//!    a) Read external voxelized phantom as unsigned char values (0 to 255);
+//!    b) Assign a Monte Carlo material number to each voxel value;
+//!    c) Build the binary tree structure to sort the voxels and reduce memory use in GPU
+//
+//        ** DISCLAIMER **
+//
+// This software and documentation (the "Software") were developed at the Food and
+// Drug Administration (FDA) by employees of the Federal Government in the course
+// of their official duties. Pursuant to Title 17, Section 105 of the United States
+// Code, this work is not subject to copyright protection and is in the public
+// domain. Permission is hereby granted, free of charge, to any person obtaining a
+// copy of the Software, to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish, distribute,
+// sublicense, or sell copies of the Software or derivatives, and to permit persons
+// to whom the Software is furnished to do so. FDA assumes no responsibility
+// whatsoever for use by other parties of the Software, its source code,
+// documentation or compiled executables, and makes no guarantees, expressed or
+// implied, about its quality, reliability, or any other characteristic. Further,
+// use of this code in no way implies endorsement by the FDA or confers any
+// advantage in regulatory decisions.  Although this software can be redistributed
+// and/or modified freely, we ask that any derivative works bear some notice that
+// they are derived from it, and any modified versions bear some notice that they
+// have been modified.
+//                                                                            
+//
+//!                     @file    load_voxels_binary_VICTRE_v1.5b.c
+//!                     @author  Andreu Badal (Andreu.Badal-Soler{at}fda.hhs.gov)
+//!                     @date    2018/01/01
+//
+////////////////////////////////////////////////////////////////////////////////
 
 
 
@@ -18,10 +51,6 @@ int search_hash_sorted(unsigned long long int hash, const int *hash_table_counte
 void add_hash_sorted(unsigned long long int hash, int node, int insertion_index, int *hash_table_counter, unsigned long long int *hash_table_key, int *hash_table_value, const int max_elements_hash_table);
 
 #define MAX_HASH_SIZE 500000     // Arbitrary limit to the size of the hash tables. This limit might significantly reduce the time spent creating the tree (searching hash tables), at the cost of missing repeated branches to canonicalize
-
-// #define IMPOSSIBLE_BITREE_INDEX 0  // !!DeBuG!! I THINK I DON'T NEED TO USE "IMPOSSIBLE_BITREE_INDEX": INIT TO 0 WITH MEMSET AND SKIP ALL THE RESETING???????????????????????
-
-
 
 
 
@@ -182,112 +211,31 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
         density_max[voxelId[input_ID]] = -1.0f;     // Flag that this material exists in a voxel of the geometry in binary format.
         
         (*voxel_mat_dens_ptr)[pix] = voxelId[input_ID];   // !!inputDensity!! Assign the required Monte Carlo material composition number to the voxel using the read voxel id and the voxel-to-material conversion table in global memory read from the input file (given after the material file name). The Monte Carlo material numbers are determined by the material file order in the input file.
-        
-
-        
-/*        
-//!!DeBuG!! HARDCODED Conversion table for breast phantoms (MUST MATCH THE "density_LOT" FUNCTION IN KERNEL!!):
-          // Compute material:
-          switch ((int)(*voxel_mat_dens_ptr)[pix])
-          {
-            case 0:
-              (*voxel_mat_dens_ptr)[pix] = 0;  // ==Air
-              density_max[0] = max_value(density_LUT[0], density_max[0]);     // Store maximum density for each material
-              break;
-            case 1:
-              (*voxel_mat_dens_ptr)[pix] = 1;  // ==fat
-              density_max[1] = max_value(density_LUT[1], density_max[1]);
-              break;
-            case 2:
-              (*voxel_mat_dens_ptr)[pix] = 2;  // ==skin
-              density_max[2] = max_value(density_LUT[2], density_max[2]);
-              break;
-            case 29:
-              (*voxel_mat_dens_ptr)[pix] = 3;  // ==glandular
-              density_max[3] = max_value(density_LUT[3], density_max[3]);
-              break;
-            case 33:
-              (*voxel_mat_dens_ptr)[pix] = 4;  // ==nipple
-              density_max[4] = max_value(density_LUT[4], density_max[4]);  // -> skin?
-              break;
-            case 40:
-              (*voxel_mat_dens_ptr)[pix] = 6;  // ==muscle
-              density_max[6] = max_value(density_LUT[6], density_max[6]);
-              break;
-            case 50:
-              (*voxel_mat_dens_ptr)[pix] = 10; // ==Compression Paddle
-              density_max[10] = max_value(density_LUT[10], density_max[10]); //  -> composition? polystyrene dens = 1.06   ;  PMMA dens = 1.19
-              break;
-            case 65:  
-              (*voxel_mat_dens_ptr)[pix] = 13; // ==Tungsten (bar patterns, MTF edge)
-              density_max[13] = max_value(density_LUT[13], density_max[13]);
-              break;
-            case 66:              
-              (*voxel_mat_dens_ptr)[pix] = 14; // ==a-Se (bar patterns)   I could use Selenium (d=4.5g/cm3) for the bar patterns instead of Tungsten (d=19.3g/cm3) to speed up the QC phantom simulations
-              density_max[14] = max_value(density_LUT[14], density_max[14]);
-              break;
-            case 88:
-              (*voxel_mat_dens_ptr)[pix] = 5;  // ==ligament(88)
-              density_max[5] = max_value(density_LUT[5], density_max[5]);  // -> connective Woodard?
-              break;
-            case 95:
-              (*voxel_mat_dens_ptr)[pix] = 9;  // ==terminal duct lobular unit(95)
-              density_max[9] = max_value(density_LUT[9], density_max[9]);   // -> muscle?
-              break;
-            case 125:
-              (*voxel_mat_dens_ptr)[pix] = 7;  // ==duct(125)
-              density_max[7] = max_value(density_LUT[7], density_max[7]);
-              break;
-            case 150:
-              (*voxel_mat_dens_ptr)[pix] = 8;  // ==artery(150)
-              density_max[8] = max_value(density_LUT[8], density_max[8]);
-              break;
-            case 200:
-              (*voxel_mat_dens_ptr)[pix] = 11;  // ==Mass/Signal
-              density_max[11] = max_value(density_LUT[11], density_max[11]); // -> glandular?
-              break;
-            case 225:
-              (*voxel_mat_dens_ptr)[pix] = 8;  // ==vein(225)
-              density_max[8] = max_value(density_LUT[8], density_max[8]);
-              break;
-            case 250:
-              (*voxel_mat_dens_ptr)[pix] = 12;  // ==Microcalcification
-              density_max[12] = max_value(density_LUT[12], density_max[12]);
-              break;              
-            default:
-              MASTER_THREAD printf(">>>ERROR ASSIGNING VOXEL VALUE>>> voxel(%lld) = %d ??\n", pix, (int)(*voxel_mat_dens_ptr)[pix]); fflush(stdout);
-          }
-*/
-
 
       }
     }
   }
 
-
-// !!VERBOSE!! Output transformed geometry
-//     k=51;
-//     for(j=1; j<=voxel_data->num_voxels.y; j++)
-//     {
-//       for(i=1; i<=voxel_data->num_voxels.x; i++)
-//       {
-//         int pix = (i-1) + (j-1)*voxel_data->num_voxels.x + (k-1)*voxel_data->num_voxels.x*voxel_data->num_voxels.y;
-//         printf("%d\n",(*voxel_mat_dens_ptr)[pix]);
-//       }
-//       printf("\n");
-//     }
-  
-// FILE* file_raw = fopen("geometry_debug.raw", "wb");   //!!VERBOSE!! Output transformed geometry
-// fwrite((*voxel_mat_dens_ptr), sizeof(char), *voxel_mat_dens_bytes, file_raw);   //!!VERBOSE!! Output transformed geometry
-// fclose(file_raw);     //!!VERBOSE!! Output transformed geometry
+        // !!VERBOSE!! Output transformed geometry
+        //     k=51;
+        //     for(j=1; j<=voxel_data->num_voxels.y; j++)
+        //     {
+        //       for(i=1; i<=voxel_data->num_voxels.x; i++)
+        //       {
+        //         int pix = (i-1) + (j-1)*voxel_data->num_voxels.x + (k-1)*voxel_data->num_voxels.x*voxel_data->num_voxels.y;
+        //         printf("%d\n",(*voxel_mat_dens_ptr)[pix]);
+        //       }
+        //       printf("\n");
+        //     }
+        // FILE* file_raw = fopen("geometry_debug.raw", "wb");   //!!VERBOSE!! Output transformed geometry
+        // fwrite((*voxel_mat_dens_ptr), sizeof(char), *voxel_mat_dens_bytes, file_raw);   //!!VERBOSE!! Output transformed geometry
+        // fclose(file_raw);     //!!VERBOSE!! Output transformed geometry
 
   
   free(voxel_data_buffer);
   gzclose(file_ptr);     // Close input file    !!zlib!!
 
 }
-
-
 
 
 
@@ -353,9 +301,6 @@ void create_bitree(int myID, struct voxel_struct* voxel_data, int* voxel_mat_den
   memset(hash_coarse_table_key,  0, sizeof(unsigned long long int)*(max_elements_hash_coarse_table));
   memset(hash_coarse_table_value,0, sizeof(int)*(max_elements_hash_coarse_table));
   memset(bitree,                 0, *bitree_bytes);
-//   int b;
-//   for(b=0; b<max_elements_bitree; b++)
-//     bitree[b] = IMPOSSIBLE_BITREE_INDEX;
 
   // ** Process each coarse voxel successively and output the coarse voxel matrix and its bitree as output file:
   int z_LowRes, y_LowRes, x_LowRes, i, j, k, node=-1, *node_ptr=&node, max_jump=0, merged_coarse_voxels=0, first_node=0,
@@ -431,8 +376,6 @@ void create_bitree(int myID, struct voxel_struct* voxel_data, int* voxel_mat_den
         {
           // -- Repeated coarse voxel! Delete repeated info and point to previous bitree location: 
           merged_coarse_voxels++;
-//           for(b=first_node; b<=node; b++) 
-//             bitree[b]=IMPOSSIBLE_BITREE_INDEX;   // Delete repeated nodes
           node = first_node-1;
           first_node = previous_first_node;
         }
@@ -585,7 +528,7 @@ unsigned long long int subdivide_node(int *node, const int first_node, const int
     if (2==(*node-my_node) && bitree[my_node+1]==bitree[my_node+2])  // The current node contains two final sub-nodes (leaves) with the same material: join them into one, and delete sub-nodes
     {
       bitree[my_node] = bitree[my_node+1];
-      bitree[my_node+1] = bitree[my_node+2] = 0;    // IMPOSSIBLE_BITREE_INDEX;
+      bitree[my_node+1] = bitree[my_node+2] = 0;
       *node = my_node;
       my_hash = hash_1st;                           // Both sides should have same hash in this case
     }
@@ -612,9 +555,6 @@ unsigned long long int subdivide_node(int *node, const int first_node, const int
           {
 
             bitree[my_node] = -1*(previous_2nd_branch - first_node);
-//             int l;
-//             for (l=node_2nd_start; l<=*node; l++)
-//               bitree[l] = IMPOSSIBLE_BITREE_INDEX;        // Reset end of bitree to default value
             *node = node_2nd_start - 1;                   // Move the counter to the end of the first half, because the second half is unnecessary
           }
           else

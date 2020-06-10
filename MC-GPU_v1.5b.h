@@ -349,9 +349,6 @@ inline void multiply_3x3(float *m_out, float *m, float *n);
 __device__ float antiscatter_grid_transmission_prob(float3* position, float3* direction, struct detector_struct* detector_data);
 __device__ int find_material_bitree(const float3* position, char* bitree, const int bitree_root_index, short3* voxel_coord);
 
-// -- Include function to read phantom directly from binary form:
-#include "load_voxels_binary_VICTRE_v1.5b.c"
-
 
 // -- END OF THE "ifndef MCGPU_H_" statement:
 #endif
