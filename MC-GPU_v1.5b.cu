@@ -686,6 +686,7 @@ int main(int argc, char **argv)
   fflush(stdout);
   
   // !!bitree!! If the binary tree is used, broadcast the tree data and all auxiliary data from master to every other thread:
+  #ifdef USING_MPI
   if (numprocs>1 && (voxel_data.num_voxels_coarse.x)!=0)
   {
     MPI_Barrier(MPI_COMM_WORLD);  // Synchronize MPI threads
@@ -715,6 +716,7 @@ int main(int argc, char **argv)
     MPI_Bcast(bitree, bitree_bytes, MPI_CHAR, 0, MPI_COMM_WORLD);  
     MPI_Barrier(MPI_COMM_WORLD);
   }
+  #endif
   
   
   // *** Read the material mean free paths and set the interaction table in a "linear_interp" structure:
