@@ -2,14 +2,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //              ****************************
-//              *** MC-GPU , version 1.4 ***
+//              *** MC-GPU, version 1.5b ***
 //              ****************************
 //                                          
 //!  Definition of the CUDA GPU kernel for the simulation of x ray tracks in a voxelized geometry.
-//!  This kernel has been optimized to yield a good performance in the GPU but can still be
-//!  compiled in the CPU without problems. All the CUDA especific commands are enclosed in
-//!  pre-processor directives that are skipped if the parameter "USING_CUDA" is not defined
-//!  at compilation time.
+//!  The physics models for Rayleigh and Compton scattering are translated from the Fortran
+//!  code in PENELOPE 2006.
 //
 //        ** DISCLAIMER **
 //
@@ -32,9 +30,9 @@
 // have been modified.
 //                                                                            
 //
-//!                     @file    MC-GPU_kernel_v1.4.cu
-//!                     @author  Andreu Badal (Andreu.Badal-Soler@fda.hhs.gov)
-//!                     @date    2012/12/12
+//!                     @file    MC-GPU_kernel_v1.5b.cu
+//!                     @author  Andreu Badal (Andreu.Badal-Soler{at}fda.hhs.gov)
+//!                     @date    2018/01/01
 //                       -- Original code started on:  2009/04/14
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,9 +51,7 @@
 //!       @param[in,out] image   Pointer to the image array.
 //!       @param[in] pixels_per_image  Number of pixels in the image (ie, elements in the array).
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__global__
-void init_image_array_GPU(unsigned long long int* image, int pixels_per_image)
+__global__ void init_image_array_GPU(unsigned long long int* image, int pixels_per_image)
 {
   int my_pixel = threadIdx.x + blockIdx.x*blockDim.x;
   if (my_pixel < pixels_per_image)
@@ -89,7 +85,6 @@ void init_image_array_GPU(unsigned long long int* image, int pixels_per_image)
 //   }
 // }
 
-#endif
 
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,13 +111,11 @@ void init_image_array_GPU(unsigned long long int* image, int pixels_per_image)
 //!       @param[in,out] image   Pointer to the image vector in the GPU global memory.
 //!       @param[in,out] dose   Pointer to the array containing the 3D voxel dose (and its uncertainty) in the GPU global memory.
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
 __global__ void track_particles(int histories_per_thread,
                                 short int num_p,                       // For a CT simulation: allocate space for up to MAX_NUM_PROJECTIONS projections.
                                 int* seed_input_device,                // Random seed read from global memory; secuence continued for successive projections in same GPU.   !!DBTv1.4!!
                                 unsigned long long int* image,
                                 ulonglong2* voxels_Edep,
-//                                 float2* voxel_mat_dens,
                                 int* voxel_mat_dens,                   //!!bitree!! Using "int" to be store the index to the bitree table       //!!FixedDensity_DBT!! Allocating "voxel_mat_dens" as "char" instead of "float2"
                                 char* bitree,                          //!!bitree!! Array with the bitrees for every non-uniform coarse voxel
                                 float2* mfp_Woodcock_table,
@@ -133,24 +126,6 @@ __global__ void track_particles(int histories_per_thread,
                                 struct detector_struct* detector_data_array,
                                 struct source_struct* source_data_array, 
                                 ulonglong2* materials_dose)
-#else
-           void track_particles(int history_batch,             // This variable is not required in the GPU, it uses the thread ID           
-                                int histories_per_thread,
-                                short int num_p,
-                                int* seed_input_device,       
-                                unsigned long long int* image,
-                                ulonglong2* voxels_Edep,
-//                                 float2* voxel_mat_dens,
-                                char* voxel_mat_dens,                  //!!FixedDensity_DBT!! Allocating "voxel_mat_dens" as "char" instead of "float2"
-                                float2* mfp_Woodcock_table,
-                                float3* mfp_table_a,
-                                float3* mfp_table_b,
-                                struct rayleigh_struct* rayleigh_table,
-                                struct compton_struct* compton_table,
-                                struct detector_struct* detector_data_array,
-                                struct source_struct* source_data_array, 
-                                ulonglong2* materials_dose)
-#endif
 {
   // -- Declare the track state variables:
   float3 position, direction;
@@ -168,11 +143,8 @@ __global__ void track_particles(int histories_per_thread,
   __shared__  struct detector_struct detector_data_SHARED;
   __shared__  struct source_struct source_data_SHARED;
 
-    
-#ifdef USING_CUDA
-  if (0==threadIdx.x)  // First GPU thread copies the variables to shared memory
+      if (0==threadIdx.x)  // First GPU thread copies the variables to shared memory
   {
-#endif
 
     // -Copy the current source, detector data from global to shared memory for fast access:
     source_data_SHARED    = source_data_array[num_p];
@@ -181,18 +153,11 @@ __global__ void track_particles(int histories_per_thread,
     // -Copy the compton data to shared memory:
     cgco_SHARED = *compton_table;
     
-#ifdef USING_CUDA
   }
   __syncthreads();     // Make sure all threads will see the initialized shared variable  
-#endif
 
   // -- Initialize the RANECU generator in a position far away from the previous history:
-#ifdef USING_CUDA
   init_PRNG((threadIdx.x + blockIdx.x*blockDim.x), histories_per_thread, *seed_input_device, &seed);   // Using a 1D block. Random seed read from global memory.  !!DBTv1.4!!
-#else
-  init_PRNG(history_batch, histories_per_thread, *seed_input_device, &seed);
-#endif
-
   
   // -- Loop for the "histories_per_thread" particles in the current history_batch:
 
@@ -205,23 +170,11 @@ __global__ void track_particles(int histories_per_thread,
     // -- Call the source function to get a primary x ray:
     source(&position, &direction, &energy, &seed, &absvox, &source_data_SHARED, &detector_data_SHARED);
     
-    
-    
-// printf("%f %f %f    %f %f %f    %f\n", position.x, position.y, position.z, direction.x, direction.y, direction.z, energy);   //!!DeBuG!!  !!DeBuG!!  !!DeBuG!!  !!DeBuG!!  VERBOSE 
-//          return;  //break; // continue;  //!!DeBuG!!  !!DeBuG!!  !!DeBuG!!  !!DeBuG!!  VERBOSE    printf
-        
-        
-        
-
     scatter_state = (signed char)0;     // Reset previous scatter state: new non-scattered particle loaded
 
     // -- Find the current energy bin by truncation (this could be pre-calculated for a monoenergetic beam):    
     //    The initialization host code made sure that the sampled energy will always be within the tabulated energies (index never negative or too large).
-#ifdef USING_CUDA
     index = __float2int_rd((energy-mfp_table_data_CONST.e0)*mfp_table_data_CONST.ide);  // Using CUDA function to convert float to integer rounding down (towards minus infinite)
-#else
-    index = (int)((energy-mfp_table_data_CONST.e0)*mfp_table_data_CONST.ide + 0.00001f);    // Adding EPSILON to truncate to INT towards minus infinite. There may be a small error for energy<=mfp_table_data_CONST.e0 but this case is irrelevant (particles will always have more energy than e0).
-#endif          
 
   
     // -- Get the minimum mfp at the current energy using linear interpolation (Woodcock tracking):      
@@ -238,8 +191,6 @@ __global__ void track_particles(int histories_per_thread,
     for(;;)
     {
       
-          // OLD CODE:      if (absvox<0)   // !!DeBuG!!  MC-GPU_v1.3 ==> if I move this "if" above the code runs much slower!? Why???
-          // Code changed to use unsigned int for absvox: instead of negative, scape of geometry will be marked by absvox==FLAG_OUTSIDE_VOXELS==MAX_UINT==4294967295    !!DBTv1.4!!
       if (absvox==FLAG_OUTSIDE_VOXELS)
           break;    // -- Primary particle was not pointing to the voxel region! (but may still be detected after moving in vacuum in a straight line).      
 
@@ -270,21 +221,11 @@ __global__ void track_particles(int histories_per_thread,
         //!!FixedDensity_DBT!! Allocating "voxel_mat_dens" as "char" instead of "float2". Density taken from function "density_LUT". First material number == 0
         material0 = (int)voxel_mat_dens[absvox];     // Get the voxel material and density in a single read from global memory (first material==0) 
 
-// printf("%d %d,  %f %f %f, %d %d %d\n",absvox, material0, position.x, position.y, position.z, (int)voxel_coord.x, (int)voxel_coord.y, (int)voxel_coord.z);   //!!VERBOSE!!
-// index=-1; break;   //!!VERBOSE!!
-
         if (material0<0)
         {
-
-// int mat_tmp=material0;  //!!VERBOSE!!
-
           // -- Non-uniform low resolution voxel: find material at current location searching the original high resolution geometry using the corresponding binary tree:
-          material0 = find_material_bitree(&position, bitree, -material0, &voxel_coord);    // !!bitree!!
-          
-// printf("%d %d,  %f %f %f,  %d %d %d\n", mat_tmp, material0, position.x, position.y, position.z, (int)bitree[-mat_tmp], (int)bitree[-mat_tmp+1], (int)bitree[bitree[-mat_tmp]]);   //!!VERBOSE!!
-          
+          material0 = find_material_bitree(&position, bitree, -material0, &voxel_coord);    // !!bitree!!         
         }
-        
         
         // -- Get the data for the linear interpolation of the interaction MFPs, in case the energy or material have changed:
         if (material0 != material_old)
@@ -327,12 +268,7 @@ __global__ void track_particles(int histories_per_thread,
         randno = energy - randno;   // Save temporal copy of the negative of the energy lost in the interaction.  DOSE TALLY
 
         // -- Find the new energy interval:
-#ifdef USING_CUDA
         index = __float2int_rd((energy-mfp_table_data_CONST.e0)*mfp_table_data_CONST.ide);  // Using CUDA function to convert float to integer rounding down (towards minus infinite)
-#else
-        index = (int)((energy-mfp_table_data_CONST.e0)*mfp_table_data_CONST.ide + 0.00001f);    // Adding EPSILON to truncate to INT
-#endif          
-
         
         if (index>-1)  // 'index' will be negative only when the energy is below the tabulated minimum energy: particle will be then absorbed (rejected) after tallying the dose.
         {          
@@ -390,13 +326,13 @@ __global__ void track_particles(int histories_per_thread,
 
         //  -- Tally the energy deposited in the current voxel, if enabled (tally disabled when dose_ROI_x_max_CONST is negative). DOSE TALLY
           
-//         if (dose_ROI_x_max_CONST > -1 && 0!=material0)  //!!DeBuG!! !!NotReportingDoseAir!!  !!DeBuG!! Skip dose tally for material 0 (== air in my simulations)
+            // Optional code to skip dose tally in air (material=0):  if (dose_ROI_x_max_CONST > -1 && 0!=material0)
         if (dose_ROI_x_max_CONST > -1)
           tally_voxel_energy_deposition(&Edep, &voxel_coord, voxels_Edep);
 
       }    
 
-      // -- Break interaction loop for particles that have been absorved or with energy below the tabulated cutoff: particle is "absorbed" (ie, track discontinued).
+      // -- Break interaction loop for particles that have been absorbed or with energy below the tabulated cutoff: particle is "absorbed" (ie, track discontinued).
       if (index<0)
         break;  
       
@@ -405,7 +341,7 @@ __global__ void track_particles(int histories_per_thread,
     if (index>-1)
     {
       // -- Particle escaped the voxels but was not absorbed, check if it will arrive at the detector and tally its energy:      
-      tally_image(&energy, &position, &direction, &scatter_state, image, &source_data_SHARED, &detector_data_SHARED, &seed);    //!!detectorModel!!
+      tally_image(&energy, &position, &direction, &scatter_state, image, &source_data_SHARED, &detector_data_SHARED, &seed);
 
     }
   }   // [Continue with a new history]
@@ -413,7 +349,7 @@ __global__ void track_particles(int histories_per_thread,
   
 
   // -- Store the final random seed used by the last thread in the grid to global memory in order to continue the random secuence in successive projections in same GPU without overlapping.                   !!DBTv1.4!!
-  //    Since I am only storing the 'x' component and using it to init both parts of the ranecu generator, the secuence will actually diverge, but I warranty that at least one MLCG will stay uncorrelated.   !!DeBuG!!
+  //    Since I am only storing the 'x' component and using it to init both parts of the ranecu generator, the sequence will actually diverge, but I warranty that at least one MLCG will stay uncorrelated.   !!DeBuG!!
   if ( (blockIdx.x == (gridDim.x-1)) && (threadIdx.x == (blockDim.x-1)))
   {
     *seed_input_device = seed.x;    // Store seed in GPU memory, but only for the thread with the largest id
@@ -451,15 +387,8 @@ __global__ void track_particles(int histories_per_thread,
 //!       @param[in] voxel_coord   Voxel coordinates, needed to check if particle located inside the input region of interest (ROI)
 //!       @param[out] voxels_Edep   ulonglong2 array containing the 3D voxel dose and dose^2 (ie, uncertainty) as unsigned integers scaled by SCALE_eV.
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline 
-void tally_voxel_energy_deposition(float* Edep, short3* voxel_coord, ulonglong2* voxels_Edep)
-{
-
-    // !!DeBuG!! Maybe it would be faster to store a 6 element struct and save temp copy?? struct_short_int_x6_align16  dose_ROI_size = dose_ROI_size_CONST;   // Get ROI coordinates from GPU constant memory and store temporal copy
-  
+__device__ inline void tally_voxel_energy_deposition(float* Edep, short3* voxel_coord, ulonglong2* voxels_Edep)
+{ 
   if((voxel_coord->x < dose_ROI_x_min_CONST) || (voxel_coord->x > dose_ROI_x_max_CONST) ||
      (voxel_coord->y < dose_ROI_y_min_CONST) || (voxel_coord->y > dose_ROI_y_max_CONST) ||
      (voxel_coord->z < dose_ROI_z_min_CONST) || (voxel_coord->z > dose_ROI_z_max_CONST))
@@ -471,14 +400,9 @@ void tally_voxel_energy_deposition(float* Edep, short3* voxel_coord, ulonglong2*
   register int DX = 1 + (int)(dose_ROI_x_max_CONST - dose_ROI_x_min_CONST);
   register int num_voxel = (int)(voxel_coord->x-dose_ROI_x_min_CONST) + ((int)(voxel_coord->y-dose_ROI_y_min_CONST))*DX + ((int)(voxel_coord->z-dose_ROI_z_min_CONST))*DX*(1 + (int)(dose_ROI_y_max_CONST-dose_ROI_y_min_CONST));
   
-   #ifdef USING_CUDA
-     atomicAdd(&voxels_Edep[num_voxel].x, __float2ull_rn((*Edep)*SCALE_eV) );    // Energy deposited at the voxel, scaled by the factor SCALE_eV and rounded.
-     atomicAdd(&voxels_Edep[num_voxel].y, __float2ull_rn((*Edep)*(*Edep)) );     // (not using SCALE_eV for std_dev to prevent overflow)           
-   #else
-     voxels_Edep[num_voxel].x += (unsigned long long int)((*Edep)*SCALE_eV + 0.5f);
-     voxels_Edep[num_voxel].y += (unsigned long long int)((*Edep)*(*Edep) + 0.5f);
-   #endif
-          
+  atomicAdd(&voxels_Edep[num_voxel].x, __float2ull_rn((*Edep)*SCALE_eV) );    // Energy deposited at the voxel, scaled by the factor SCALE_eV and rounded.
+  atomicAdd(&voxels_Edep[num_voxel].y, __float2ull_rn((*Edep)*(*Edep)) );     // (not using SCALE_eV for std_dev to prevent overflow)           
+
   return;
 }
 
@@ -499,20 +423,13 @@ void tally_voxel_energy_deposition(float* Edep, short3* voxel_coord, ulonglong2*
 //!       @param[in] seed   Current seed of the random number generator, requiered to sample the movement direction.
 //!       @param[out] absvox   Set to <0 if primary particle will not cross the voxels, not changed otherwise (>0).
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline void source(float3* position, float3* direction, float* energy, int2* seed, unsigned int* absvox, struct source_struct* source_data_SHARED, struct detector_struct* detector_data_SHARED)
+__device__ inline void source(float3* position, float3* direction, float* energy, int2* seed, unsigned int* absvox, struct source_struct* source_data_SHARED, struct detector_struct* detector_data_SHARED)
 {
   // *** Sample the initial x-ray energy following the input energy spectrum using the Walker aliasing algorithm from PENELOPE:
       // The following code is equivalent to calling the function "seeki_walker": int sampled_bin = seeki_walker(source_data_CONST.espc_cutoff, source_data_CONST.espc_alias, ranecu(seed), source_data_CONST.num_bins_espc);      
   int sampled_bin;
   float RN = ranecu(seed) * source_energy_data_CONST.num_bins_espc;    // Find initial interval (array starting at 0):   
-  #ifdef USING_CUDA
-    int int_part = __float2int_rd(RN);                          //   -- Integer part (round down)
-  #else
-    int int_part = (int)(RN);
-  #endif
+  int int_part = __float2int_rd(RN);                          //   -- Integer part (round down)
   float fraction_part = RN - ((float)int_part);                 //   -- Fractional part
   if (fraction_part < source_energy_data_CONST.espc_cutoff[int_part])  // Check if we are in the aliased part
     sampled_bin = int_part;                                     // Below the cutoff: return current value
@@ -528,10 +445,8 @@ inline void source(float3* position, float3* direction, float* energy, int2* see
   if (source_data_SHARED->focal_spot_FWHM > 5.0e-7f)
   {
     float g = sample_gausspdf_below2sigma(seed);   // Return a Gaussian distributed random value located at less than 2 sigma from the center.          !!DBTv1.4!!
-      // !!DeBuG!! Cropping the Gaussian dist at 2 sigma to prevent generating photons unrealistically far from the focal spot center. The 2 sigma limit has been set arbitrary and will affect 4.55% of sampled locations.  
-      // !!DeBuG!! Experimental focal spot measurements show that the spot is quite sharp [A Burgess, "Focal spots: I. MTF separability", Invest Radiol 12, p. 36-43 (1977)]
-
-
+      // Cropping the Gaussian dist at 2 sigma to prevent generating photons unrealistically far from the focal spot center. The 2 sigma limit has been set arbitrary and will affect 4.55% of sampled locations.  
+      // Experimental focal spot measurements show that the spot is quite sharp [A Burgess, "Focal spots: I. MTF separability", Invest Radiol 12, p. 36-43 (1977)]
     
         //ALTERNATIVE METHOD:     float g = sample_gausspdf(seed);   // Return a Gaussian distributed random value.            !!DBTv1.4!!
         //ALTERNATIVE METHOD:     gausspdf(&g1, &g2, seed);   // Sample 2 independent Gaussian distributed random variables.
@@ -569,18 +484,11 @@ inline void source(float3* position, float3* direction, float* energy, int2* see
     register float sin_theta_sampled = sqrtf(1.0f - direction->z*direction->z);
     float sinphi_sampled, cosphi_sampled;
     
-    #ifdef USING_CUDA
-      sincos(phi_sampled, &sinphi_sampled,&cosphi_sampled);    // Calculate the SIN and COS at the same time.
-    #else
-      sinphi_sampled = sin(phi_sampled);   // Some CPU compilers will be able to use "sincos", but let's be safe.
-      cosphi_sampled = cos(phi_sampled);
-    #endif       
-    
+    sincos(phi_sampled, &sinphi_sampled,&cosphi_sampled);    // Calculate the SIN and COS at the same time.    
     direction->y = sin_theta_sampled * sinphi_sampled;
     direction->x = sin_theta_sampled * cosphi_sampled;
   }
-// ORIGINAL  while( fabsf(direction->z/(direction->y+1.0e-7f)) > source_data_SHARED->max_height_at_y1cm );  // !!DeBuG!! Force square field for any phi by rejection sampling. (The "+1.0e-7f" prevents division by zero)
-  while( (fabsf(direction->z/(direction->y+1.0e-8f)) > source_data_SHARED->max_height_at_y1cm) ||           // !!DeBuG!! Force square field for any phi by rejection sampling. (The "+1.0e-7f" prevents division by zero)
+  while( (fabsf(direction->z/(direction->y+1.0e-8f)) > source_data_SHARED->max_height_at_y1cm) ||    // Force square field for any phi by rejection sampling. (The "+1e-8" prevents division by zero)
          (fabsf(direction->x/(direction->y+1.0e-8f)) > source_data_SHARED->max_width_at_y1cm) );     //!!DBTv1.4!!
 
 
@@ -606,16 +514,14 @@ inline void source(float3* position, float3* direction, float* energy, int2* see
   }
 
   
-  //!!DeBuG!!   To be safe, renormalize the direction vector to 1 (should not be necessary but single precision math might accumulate errors)
+  // To be safe, renormalize the direction vector to 1 (should not be necessary but single precision math might accumulate errors)
   double NORM = rsqrt(direction->x*direction->x + direction->y*direction->y + direction->z*direction->z);     // !!DeBuG!! Check if it is really necessary to renormalize in a real simulation!!
   direction->x = NORM*direction->x;
   direction->y = NORM*direction->y;
   direction->z = NORM*direction->z;
        //        printf("%.20lf   %.20lf   %.20lf\n", NORM, rsqrt(direction->x*direction->x + direction->y*direction->y + direction->z*direction->z), diff);   //!!VERBOSE!!  !!DeBuG!!
 
-  
- 
-  
+
   // *** Move the particle to the inside of the voxel bounding box:
   move_to_bbox(position, direction, absvox);
 }
@@ -627,7 +533,7 @@ inline void source(float3* position, float3* direction, float* energy, int2* see
 //!  An EPSILON distance is added to make sure the particles will be clearly inside the bbox, 
 //!  not exactly on the surface. 
 //!
-//!  This algorithm makes the following assumtions:
+//!  This algorithm makes the following assumptions:
 //!     - The back lower vertex of the voxel bounding box is always located at the origin: (x0,y0,z0)=(0,0,0).
 //!     - The initial value of "position" corresponds to the focal spot location.
 //!     - When a ray is not pointing towards the bbox plane that it should cross according to the sign of the direction,
@@ -644,10 +550,7 @@ inline void source(float3* position, float3* direction, float* energy, int2* see
 //!       @param[in] size_bbox    Global variable from structure voxel_data_CONST: size of the bounding box.
 //!       @param[in] offset       Global variable from structure voxel_data_CONST: offset of the geometry in x, y, and z.
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline void move_to_bbox(float3* position, float3* direction, unsigned int* intersection_flag)
+__device__ inline void move_to_bbox(float3* position, float3* direction, unsigned int* intersection_flag)
 {
   float dist_y, dist_x, dist_z;
 
@@ -777,10 +680,7 @@ inline void move_to_bbox(float3* position, float3* direction, unsigned int* inte
 //!       @param[out] seed   Initial PRNG seeds for the present history.
 //!
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline void init_PRNG(int history_batch, int histories_per_thread, int seed_input, int2* seed)
+__device__ inline void init_PRNG(int history_batch, int histories_per_thread, int seed_input, int2* seed)
 {
   // -- Move the RANECU generator to a unique position for the current batch of histories:
   //    I have to use an "unsigned long long int" value to represent all the simulated histories in all previous batches
@@ -855,10 +755,7 @@ inline void init_PRNG(int history_batch, int histories_per_thread, int seed_inpu
 //    Return value:  (a1*a2) MOD m                                
 //
 /////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__ __host__    // Function will be callable from host and also from device
-#endif
-inline int abMODm(int m, int a, int s)
+__device__ __host__ inline int abMODm(int m, int a, int s)
 {
   // CAUTION: the input parameters are modified in the function but should not be returned to the calling function! (pass by value!)
   int q, k;
@@ -901,10 +798,7 @@ inline int abMODm(int m, int a, int s)
 //!       @return   PRN double value in the open interval (0,1)
 //!
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline float ranecu(int2* seed)
+__device__ inline float ranecu(int2* seed)
 {
   int i1 = (int)(seed->x/53668);
   seed->x = 40014*(seed->x-i1*53668)-i1*12211;
@@ -918,23 +812,14 @@ inline float ranecu(int2* seed)
   i2 = seed->x-seed->y;
   if (i2 < 1) i2 += 2147483562;
 
-
-#ifdef USING_CUDA
-  return (__int2float_rn(i2)*4.65661305739e-10f);        // 4.65661305739e-10 == 1/2147483563
-#else
-  return ((float)(i2)*4.65661305739e-10f);          
-#endif
-
+  return (__int2float_rn(i2)*4.65661305739e-10f);   // 4.65661305739e-10 == 1/2147483563
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
 //! Pseudo-random number generator (PRNG) RANECU returning a double value.
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline double ranecu_double(int2* seed)
+__device__ inline double ranecu_double(int2* seed)
 {
   int i1 = (int)(seed->x/53668);
   seed->x = 40014*(seed->x-i1*53668)-i1*12211;
@@ -948,17 +833,12 @@ inline double ranecu_double(int2* seed)
   i2 = seed->x-seed->y;
   if (i2 < 1) i2 += 2147483562;
 
-#ifdef USING_CUDA
   return (__int2double_rn(i2)*4.6566130573917692e-10);
-#else
-  return ((double)(i2)*4.6566130573917692e-10);
-#endif
 }
 
-#ifdef USING_CUDA
-__host__
-#endif
-inline double ranecu_double_CPU(int2* seed)
+
+////////////////////////////////////////////////////////////////////////////////
+__host__ inline double ranecu_double_CPU(int2* seed)
 {
   int i1 = (int)(seed->x/53668);
   seed->x = 40014*(seed->x-i1*53668)-i1*12211;
@@ -972,11 +852,7 @@ inline double ranecu_double_CPU(int2* seed)
   i2 = seed->x-seed->y;
   if (i2 < 1) i2 += 2147483562;
 
-// #ifdef USING_CUDA
-//   return (__int2double_rn(i2)*4.6566130573917692e-10);
-// #else
   return ((double)(i2)*4.6566130573917692e-10);
-// #endif
 }
 
 
@@ -991,10 +867,7 @@ inline double ranecu_double_CPU(int2* seed)
 //!                 located (negative if position outside the voxel bbox).
 //!
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline unsigned int locate_voxel(float3 p, short3* voxel_coord)
+__device__ inline unsigned int locate_voxel(float3 p, short3* voxel_coord)
 {
 
   p.x -= voxel_data_CONST.offset.x;    // Translate the coordinate system to a reference where the voxel's lower back corner is at the origin
@@ -1058,20 +931,11 @@ inline unsigned int locate_voxel(float3 p, short3* voxel_coord)
 //         axis cannot be defined in this way. Instead y' is set to
 //         y and therefore either x'=x (if w=1) or x'=-x (w=-1)
 //////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline void rotate_double(float3* direction, double costh, double phi)   // !!DeBuG!! The direction vector is single precision but the rotation is performed in doule precision for increased accuracy.
+__device__ inline void rotate_double(float3* direction, double costh, double phi)   // The direction vector is single precision but the rotation is performed in double precision for increased accuracy.
 {
   double DXY, NORM, cosphi, sinphi, SDT;
   DXY = direction->x*direction->x + direction->y*direction->y;
-  
-#ifdef USING_CUDA
-  sincos(phi, &sinphi,&cosphi);   // Calculate the SIN and COS at the same time.
-#else
-  sinphi = sin(phi);   // Some CPU compilers will be able to use "sincos", but let's be safe.
-  cosphi = cos(phi);
-#endif   
+  sincos(phi, &sinphi,&cosphi);   // Calculate the SIN and COS at the same time.   sinphi = sin(phi); cosphi = cos(phi);
 
   // ****  Ensure normalisation
   NORM = DXY + direction->z*direction->z;     // !!DeBuG!! Check if it is really necessary to renormalize in a real simulation!!
@@ -1136,10 +1000,7 @@ inline void rotate_double(float3* direction, double costh, double phi)   // !!De
 //  C  or implied warranty.                                                C
 //  CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 //////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline void GRAa(float *energy, double *costh_Rayleigh, int *mat, float *pmax_current, int2 *seed, struct rayleigh_struct* cgra)
+__device__ inline void GRAa(float *energy, double *costh_Rayleigh, int *mat, float *pmax_current, int2 *seed, struct rayleigh_struct* cgra)
 {
 /*  ****  Energy grid and interpolation constants for the current energy. */
     double  xmax = ((double)*energy) * 8.065535669099010e-5;       // 8.065535669099010e-5 == 2.0*20.6074/510998.918
@@ -1218,7 +1079,7 @@ inline void GRAa(float *energy, double *costh_Rayleigh, int *mat, float *pmax_cu
 //!  the sampling algorithm from PENELOPE 2006:
 //!    Relativistic impulse approximation with analytical one-electron Compton profiles
 
-// !!DeBuG!!  In penelope, Doppler broadening is not used for E greater than 5 MeV.
+//      NOTE: In penelope, Doppler broadening is not used for E greater than 5 MeV.
 //            We don't use it in GPU to reduce the lines of code and prevent using COMMON/compos/ZT(M)
 
 //!       @param[in,out] energy   incident and final photon energy (eV)
@@ -1241,11 +1102,7 @@ inline void GRAa(float *energy, double *costh_Rayleigh, int *mat, float *pmax_cu
 //  CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 //
 //  ************************************************************************
-
-#ifdef USING_CUDA
-__device__
-#endif
-inline void GCOa(float *energy, double *costh_Compton, int *mat, int2 *seed, struct compton_struct* cgco_SHARED)
+__device__ inline void GCOa(float *energy, double *costh_Compton, int *mat, int2 *seed, struct compton_struct* cgco_SHARED)
 {
     float s, a1, s0, af, ek, ek2, ek3, tau, pzomc, taumin;
     float rn[MAX_SHELLS];
@@ -1256,9 +1113,8 @@ inline void GCOa(float *energy, double *costh_Compton, int *mat, int2 *seed, str
     int i__;
     int my_noscco = cgco_SHARED->noscco[*mat];    // Store the number of oscillators for the input material in a local variable
     
-#ifndef USING_CUDA
-    static int warning_flag_1 = -1, warning_flag_2 = -1, warning_flag_3 = -1;    // Write warnings for the CPU code, but only once.  !!DeBuG!!
-#endif
+
+    //!!VERBOSE!!  static int warning_flag_1 = -1, warning_flag_2 = -1, warning_flag_3 = -1;    // Write warnings for the CPU code, but only once.  !!DeBuG!!
 
     ek = *energy * 1.956951306108245e-6f;    // (1.956951306108245e-6 == 1.0/510998.918)
     ek2 = ek * 2.f + 1.f;
@@ -1279,12 +1135,9 @@ inline void GCOa(float *energy, double *costh_Compton, int *mat, int2 *seed, str
        if (temp < *energy)
        {
          register float aux = *energy * (*energy - temp) * 2.f;
-         #ifdef USING_CUDA
-           pzomc = cgco_SHARED->fj0[*mat + i__*MAX_MATERIALS] * (aux - temp * 510998.918f) * rsqrtf(aux + aux + temp * temp) * 1.956951306108245e-6f;
+         pzomc = cgco_SHARED->fj0[*mat + i__*MAX_MATERIALS] * (aux - temp * 510998.918f) * rsqrtf(aux + aux + temp * temp) * 1.956951306108245e-6f;
              // 1.956951306108245e-6 = 1.0/510998.918f   // Version using the reciprocal of sqrt in CUDA: faster and more accurate!!
-         #else
-           pzomc = cgco_SHARED->fj0[*mat + i__*MAX_MATERIALS] * (aux - temp * 510998.918f) / (sqrtf(aux + aux + temp * temp) * 510998.918f);
-         #endif
+             // ORIGINAL: pzomc = cgco_SHARED->fj0[*mat + i__*MAX_MATERIALS] * (aux - temp * 510998.918f) / (sqrtf(aux + aux + temp * temp) * 510998.918f);
          if (pzomc > 0.0f)
            temp = (0.707106781186545f+pzomc*1.4142135623731f) * (0.707106781186545f+pzomc*1.4142135623731f);
          else
@@ -1326,24 +1179,19 @@ inline void GCOa(float *energy, double *costh_Compton, int *mat, int2 *seed, str
 
           if ((aux>1.0e-12f)||(temp>1.0e-12f))  // !!DeBuG!! Make sure the SQRT argument is never <0, and that we never get 0/0 -> NaN when aux=temp=0 !!
           {
-         #ifdef USING_CUDA
            pzomc = cgco_SHARED->fj0[*mat + i__*MAX_MATERIALS] * (aux - temp * 510998.918f) * rsqrtf(aux + aux + temp * temp) * 1.956951306108245e-6f;
              // 1.956951306108245e-6 = 1.0/510998.918f   //  Version using the reciprocal of sqrt in CUDA: faster and more accurate!!
-         #else
-           pzomc = cgco_SHARED->fj0[*mat + i__*MAX_MATERIALS] * (aux - temp * 510998.918f) / (sqrtf(aux + aux + temp * temp) * 510998.918f);
-         #endif
-
+             // ORIGINAL: pzomc = cgco_SHARED->fj0[*mat + i__*MAX_MATERIALS] * (aux - temp * 510998.918f) / (sqrtf(aux + aux + temp * temp) * 510998.918f);
           }
           else
           {
             pzomc = 0.002f;    // !!DeBuG!! Using a rough approximation to a sample value of pzomc found using pure double precision: NOT RIGUROUS! But this code is expected to be used very seldom, only in extreme cases.
-            #ifndef USING_CUDA
-            if (warning_flag_1<0)
-            {
-               warning_flag_1 = +1;  // Disable warning, do not show again
-//                printf("          [... Small numerical precision error detected computing \"pzomc\" in GCOa (this warning will not be repeated).]\n               i__=%d, aux=%.14f, temp=%.14f, pzomc(forced)=%.14f, uico=%.14f, energy=%.7f, cgco_SHARED->fj0=%.14f, mat=%d, cdt1=%.14lf\n", (int)i__, aux, temp, pzomc, cgco_SHARED->uico[*mat+i__*MAX_MATERIALS], *energy, cgco_SHARED->fj0[*mat+i__*MAX_MATERIALS], (int)*mat, cdt1);   // !!DeBuG!!
-            }
-            #endif                    
+
+            //!!VERBOSE!!  if (warning_flag_1<0)
+            //!!VERBOSE!!  {  warning_flag_1 = +1;  // Disable warning, do not show again
+            //!!VERBOSE!!  // printf("          [... Small numerical precision error detected computing \"pzomc\" in GCOa (this warning will not be repeated).]\n               i__=%d, aux=%.14f, temp=%.14f, pzomc(forced)=%.14f, uico=%.14f, energy=%.7f, cgco_SHARED->fj0=%.14f, mat=%d, cdt1=%.14lf\n", (int)i__, aux, temp, pzomc, cgco_SHARED->uico[*mat+i__*MAX_MATERIALS], *energy, cgco_SHARED->fj0[*mat+i__*MAX_MATERIALS], (int)*mat, cdt1);   // !!DeBuG!!
+            //!!VERBOSE!!  }
+           
           }
           
           temp = pzomc * 1.4142135623731f;
@@ -1413,13 +1261,11 @@ inline void GCOa(float *energy, double *costh_Compton, int *mat, int2 *seed, str
 
         af = 0.00200f;    // !!DeBuG!!
                 
-        #ifndef USING_CUDA
-        if (warning_flag_2<0)
-        {
-            warning_flag_2 = +1;  // Disable warning, do not show again
-//             printf("          [... Small numerical precision error detected computing \"af\" in GCOa (this warning will not be repeated)].\n               xqc=%.14f, af(forced)=%.14f, tau=%.14f, costh_Compton=%.14lf\n", temp, af, tau, *costh_Compton);    // !!DeBuG!!
-        }
-        #endif
+        //!!VERBOSE!!  if (warning_flag_2<0)
+        //!!VERBOSE!!  { warning_flag_2 = +1;  // Disable warning, do not show again
+        //!!VERBOSE!!    printf("          [... Small numerical precision error detected computing \"af\" in GCOa (this warning will not be repeated)].\n               xqc=%.14f, af(forced)=%.14f, tau=%.14f, costh_Compton=%.14lf\n", temp, af, tau, *costh_Compton);    // !!DeBuG!!
+        //!!VERBOSE!!  }
+
       }
 
       if (af > 0.0f)
@@ -1455,16 +1301,11 @@ inline void GCOa(float *energy, double *costh_Compton, int *mat, int2 *seed, str
       t = (tau / b1) * (b2 + temp);
       if (t > 1.0f)
       {
-        #ifndef USING_CUDA
 
-        #endif      
-        #ifndef USING_CUDA
-        if (warning_flag_3<0)
-        {
-            warning_flag_3 = +1;  // Disable warning, do not show again
-//             printf("\n          [... a Compton event tried to increase the x ray energy due to precision error. Keeping initial energy. (This warning will not be repeated.)]\n               scaling=%.14f, costh_Compton=%.14lf\n", t, *costh_Compton);   // !!DeBuG!!
-        }
-        #endif
+        //!!VERBOSE!!  if (warning_flag_3<0)
+        //!!VERBOSE!!  { warning_flag_3 = +1;  // Disable warning, do not show again
+        //!!VERBOSE!!    printf("\n          [... a Compton event tried to increase the x ray energy due to precision error. Keeping initial energy. (This warning will not be repeated.)]\n               scaling=%.14f, costh_Compton=%.14lf\n", t, *costh_Compton);   // !!DeBuG!!
+        //!!VERBOSE!!  }
         
         t = 1.0f; // !!DeBuG!! Avoid increasing energy by hand!!! not nice!!
       }
@@ -1501,39 +1342,26 @@ inline void GCOa(float *energy, double *costh_Compton, int *mat, int2 *seed, str
 //!       @param[in] material   Current material id number
 //!       @param[out] materials_dose   ulonglong2 array storing the mateials dose [in eV/g] and dose^2 (ie, uncertainty).
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline 
-void tally_materials_dose(float* Edep, int* material, ulonglong2* materials_dose)
+__device__ inline void tally_materials_dose(float* Edep, int* material, ulonglong2* materials_dose)
 {
-      
-// !!DeBuG!! The energy can be tallied directly with atomicAdd in global memory or using shared memory first and then global for whole block if too slow. With the initial testing it looks like using global memory is already very fast!
+  // Note: with many histories and few materials the materials_dose integer variables may overflow!! Using double precision floats would be better. Single precision is not good enough because adding small energies to a large counter would give problems.
 
-// !!DeBuG!! WARNING: with many histories and few materials the materials_dose integer variables may overflow!! Using double precision floats would be better. Single precision is not good enough because adding small energies to a large counter would give problems.
-
-#ifdef USING_CUDA
   atomicAdd(&materials_dose[*material].x, __float2ull_rn((*Edep)*SCALE_eV) );  // Energy deposited at the material, scaled by the factor SCALE_eV and rounded.
   atomicAdd(&materials_dose[*material].y, __float2ull_rn((*Edep)*(*Edep)) );   // Square of the dose to estimate standard deviation (not using SCALE_eV for std_dev to prevent overflow)
-#else
-  materials_dose[*material].x += (unsigned long long int)((*Edep)*SCALE_eV + 0.5f);
-  materials_dose[*material].y += (unsigned long long int)((*Edep)*(*Edep) + 0.5f);
-#endif     
-          
+      // OLD:   materials_dose[*material].x += (unsigned long long int)((*Edep)*SCALE_eV + 0.5f);
   return;
 }
 
 
 
-// !!inputDensity!! Replacing the density_LUT function with a hardcoded look-up table for an array in RAM or GPU constant memory:
+/* 
+   !!inputDensity!! Replacing the hardcoded density_LUT look-up table function with an array in RAM or GPU constant memory:
+   OLD LOOK-UP TABLE USED IN VICTRE SIMULATIONS:
 
-/*
 ////////////////////////////////////////////////////////////////////////////////
 //!  Look up table that returns the pre-defined density of the input material.
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
 __device__ __host__    // Function will be callable from host and also from device
-#endif
 inline float density_LUT(int material)                                                  //!!FixedDensity_DBT!! 
 {
   float density;
@@ -1599,10 +1427,7 @@ inline float density_LUT(int material)                                          
 //!  Tally a radiographic projection image using a detector layer with the input thickness and material composition.
 //!  This model will reproduce the geometric spreading of the point spread function and the real detector transmission.
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline void tally_image(float* energy, float3* position, float3* direction, signed char* scatter_state, unsigned long long int* image, struct source_struct* source_data_SHARED, struct detector_struct* detector_data_SHARED, int2* seed)     //!!detectorModel!!
+__device__ inline void tally_image(float* energy, float3* position, float3* direction, signed char* scatter_state, unsigned long long int* image, struct source_struct* source_data_SHARED, struct detector_struct* detector_data_SHARED, int2* seed)     //!!detectorModel!!
 {
   // Rotate direction to the coordinate system with the detector on XZ plane (Y=0):       // !!DBTv1.4!!
   apply_rotation(direction, detector_data_SHARED->rot_inv);    //!!DBTv1.4!!
@@ -1719,10 +1544,7 @@ inline void tally_image(float* energy, float3* position, float3* direction, sign
 //!    Uses the polar method to avoid expensive trigonometric calls implied by the alternative Box-Muller method.
 //!         (**Code adapted from penEasyv20140609/penaux.F**)
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline void gausspdf(float *g1, float *g2, int2 *seed)
+__device__ inline void gausspdf(float *g1, float *g2, int2 *seed)
 {
   float x,y,u;
   do
@@ -1758,10 +1580,7 @@ inline void gausspdf_double_CPU(double *g1, double *g2, int2 *seed)
 // //!    Uses the polar method to avoid expensive trigonometric calls implied by the alternative Box-Muller method.
 // //         (**Code adapted from penEasyv20140609/penaux.F**)
 // ////////////////////////////////////////////////////////////////////////////////
-// #ifdef USING_CUDA
-// __device__
-// #endif
-// inline float sample_gausspdf(int2 *seed)
+// __device__ inline float sample_gausspdf(int2 *seed)
 // {
 //   float x,y,u;
 //   do
@@ -1784,10 +1603,7 @@ inline void gausspdf_double_CPU(double *g1, double *g2, int2 *seed)
 //     Experimental focal spot measurements show that the spot is quite sharp [A Burgess, "Focal spots: I. MTF separability", Invest Radiol 12, p. 36-43 (1977)]
 //
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline float sample_gausspdf_below2sigma(int2 *seed)
+__device__ inline float sample_gausspdf_below2sigma(int2 *seed)
 {
   float g;
   do                      // Iterate function until we get a value under 2*sigma
@@ -1816,13 +1632,8 @@ inline float sample_gausspdf_below2sigma(int2 *seed)
 
 
 
-
-
 //!*  Rotate input vector (x,y,z) around the input rotation axis (wx,wy,wz) for the input angle, using Rodrigues' formula to compute the rotation matrix (http://mathworld.wolfram.com/RodriguesRotationFormula.html) :
-#ifdef USING_CUDA
-__device__ __host__
-#endif
-inline void rotate_around_axis_Rodrigues(float *angle, float3 *w, float3 *p)
+__device__ __host__ inline void rotate_around_axis_Rodrigues(float *angle, float3 *w, float3 *p)
 {
   if (fabs(*angle)>1.0e-8f)  // Apply rotation only if input angle is not 0 
   {
@@ -1854,10 +1665,7 @@ inline void rotate_around_axis_Rodrigues(float *angle, float3 *w, float3 *p)
 
 //!*  Rotate the TWO input vectors (x,y,z) around the input rotation axis (wx,wy,wz) for the input angle, using Rodrigues' formula to compute the rotation matrix (http://mathworld.wolfram.com/RodriguesRotationFormula.html) :
 //!*  Rotating the two vectors together I can re-use the rotation matrix computed on the fly
-#ifdef USING_CUDA
-__device__ __host__
-#endif
-inline void rotate_2vectors_around_axis_Rodrigues(float *angle, float3 *w, float3 *p, float3 *v)
+__device__ __host__ inline void rotate_2vectors_around_axis_Rodrigues(float *angle, float3 *w, float3 *p, float3 *v)
 {
   if (fabs(*angle)>1.0e-8f)  // Apply rotation only if input angle is not 0 
   {
@@ -1890,10 +1698,7 @@ inline void rotate_2vectors_around_axis_Rodrigues(float *angle, float3 *w, float
 
 
 //!*  Rotate the input vector (float3) multiplying by the input rotation matrix (float m[9]).
-#ifdef USING_CUDA
-__device__ __host__
-#endif
-inline void apply_rotation(float3 *v, float *m)
+__device__ __host__ inline void apply_rotation(float3 *v, float *m)
 {
   float tmp_x = v->x, tmp_y = v->y;
   v->x = tmp_x*m[0] + tmp_y*m[1] + v->z*m[2];
@@ -1918,10 +1723,7 @@ inline void apply_rotation(float3 *v, float *m)
 //!
 //!     - Using double precision for variables that have to be inverted to avoid inaccuracy for collimated rays (u2 close to 0). Using exclusively double takes 4 times more than exclusively floats!
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-inline float antiscatter_grid_transmission_prob(float3* position, float3* direction, struct detector_struct* detector_data_SHARED)                   //!!DBTv1.5!!
+__device__ inline float antiscatter_grid_transmission_prob(float3* position, float3* direction, struct detector_struct* detector_data_SHARED)                   //!!DBTv1.5!!
 {
   // -- Compute grid angle at the current location on the detector:
    
@@ -1986,10 +1788,7 @@ inline float antiscatter_grid_transmission_prob(float3* position, float3* direct
 //!  @param[in] voxel_data_CONST.offset  Global variable with the location of the lower walls of the complete voxelized geometry
 //!  @return  Material number found at the input position (composition of the tree leaf in that point)
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef USING_CUDA
-__device__
-#endif
-int find_material_bitree(const float3* position, char* bitree, const int bitree_root_index, short3* voxel_coord)      // !!bitree!! v1.5b
+__device__ int find_material_bitree(const float3* position, char* bitree, const int bitree_root_index, short3* voxel_coord)      // !!bitree!! v1.5b
 {
   // -- Define variable used during the tree traversal:
   int bitree_node=0, node=0;    // Binary tree node index for the current coarse voxel
@@ -2006,8 +1805,6 @@ int find_material_bitree(const float3* position, char* bitree, const int bitree_
   for(;;)
   {
     bitree_node = (int)bitree[node+bitree_root_index];   // Every acces to the bitree array has to be offset by the root node index "bitree_root_index"
-
-// /*if (bitree_root_index>18060000 && bitree_root_index<18690000)*/ printf(">>%d          X      %d %d  ,  node_lower_wall=%f %f %f , node_width=%d %d %d\n", bitree_root_index, node, bitree_node, node_lower_wall.x, node_lower_wall.y, node_lower_wall.z, node_width.x, node_width.y, node_width.z);  //!!VERBOSE!!
     
     if (bitree_node>-1) // Check if we are already in a final node (empty geometry or final node found in previous Z division):      
       break;   // We reached a final node! Exit infinite loop.
@@ -2036,8 +1833,6 @@ int find_material_bitree(const float3* position, char* bitree, const int bitree_
     }
     
     bitree_node = (int)bitree[node+bitree_root_index];
-    
-// /*if (bitree_root_index>18060000 && bitree_root_index<18690000) */printf(">>%d          Y      %d %d  ,  %f %f %f , %d %d %d\n", bitree_root_index, node, bitree_node, node_lower_wall.x, node_lower_wall.y, node_lower_wall.z, node_width.x, node_width.y, node_width.z);  //!!VERBOSE!!
 
     if (bitree_node>-1) 
       break;   // We reached a final node! Exit infinite loop.
@@ -2062,8 +1857,6 @@ int find_material_bitree(const float3* position, char* bitree, const int bitree_
     }
     
     bitree_node = (int)bitree[node+bitree_root_index];
-    
-// /*if (bitree_root_index>18060000 && bitree_root_index<18690000)*/ printf(">>%d          Z      %d %d  ,  %f %f %f , %d %d %d\n", bitree_root_index, node, bitree_node, node_lower_wall.x, node_lower_wall.y, node_lower_wall.z, node_width.x, node_width.y, node_width.z);  //!!VERBOSE!!
 
     if (bitree_node>-1)
       break;   // We reached a final node! Exit infinite loop.
@@ -2089,8 +1882,6 @@ int find_material_bitree(const float3* position, char* bitree, const int bitree_
     
   }
   
-
-// if (bitree_node==12) printf("CaOx: %d %d  ,  %f %f %f , %d %d %d", bitree_root_index, node, node_lower_wall.x, node_lower_wall.y, node_lower_wall.z, node_width.x, node_width.y, node_width.z);  //!!VERBOSE!!
 
   // -- We reached a final node: return the material number in the current location
   return (bitree_node);

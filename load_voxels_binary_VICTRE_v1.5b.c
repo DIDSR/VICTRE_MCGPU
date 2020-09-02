@@ -1,9 +1,42 @@
 
-// Auxiliary function for the VICTRE DBT simulations: read external voxelized phantom as unsigned char values; reasign material numbers to match MC materials
-
-
-
-// #include "MC-GPU_v1.5b.h"
+////////////////////////////////////////////////////////////////////////////////
+//
+//              ****************************
+//              *** MC-GPU, version 1.5b ***
+//              ****************************
+//                                          
+//!  Auxiliary functions for the VICTRE DBT simulations using a binary geometry
+//!  and a binary tree structure: 
+//!    a) Read external voxelized phantom as unsigned char values (0 to 255);
+//!    b) Assign a Monte Carlo material number to each voxel value;
+//!    c) Build the binary tree structure to sort the voxels and reduce memory use in GPU
+//
+//        ** DISCLAIMER **
+//
+// This software and documentation (the "Software") were developed at the Food and
+// Drug Administration (FDA) by employees of the Federal Government in the course
+// of their official duties. Pursuant to Title 17, Section 105 of the United States
+// Code, this work is not subject to copyright protection and is in the public
+// domain. Permission is hereby granted, free of charge, to any person obtaining a
+// copy of the Software, to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish, distribute,
+// sublicense, or sell copies of the Software or derivatives, and to permit persons
+// to whom the Software is furnished to do so. FDA assumes no responsibility
+// whatsoever for use by other parties of the Software, its source code,
+// documentation or compiled executables, and makes no guarantees, expressed or
+// implied, about its quality, reliability, or any other characteristic. Further,
+// use of this code in no way implies endorsement by the FDA or confers any
+// advantage in regulatory decisions.  Although this software can be redistributed
+// and/or modified freely, we ask that any derivative works bear some notice that
+// they are derived from it, and any modified versions bear some notice that they
+// have been modified.
+//                                                                            
+//
+//!                     @file    load_voxels_binary_VICTRE_v1.5b.c
+//!                     @author  Andreu Badal (Andreu.Badal-Soler{at}fda.hhs.gov)
+//!                     @date    2020/09/01
+//
+////////////////////////////////////////////////////////////////////////////////
 
 
 
@@ -19,10 +52,6 @@ void add_hash_sorted(unsigned long long int hash, int node, int insertion_index,
 
 #define MAX_HASH_SIZE 500000     // Arbitrary limit to the size of the hash tables. This limit might significantly reduce the time spent creating the tree (searching hash tables), at the cost of missing repeated branches to canonicalize
 
-// #define IMPOSSIBLE_BITREE_INDEX 0  // !!DeBuG!! I THINK I DON'T NEED TO USE "IMPOSSIBLE_BITREE_INDEX": INIT TO 0 WITH MEMSET AND SKIP ALL THE RESETING???????????????????????
-
-
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +66,7 @@ void add_hash_sorted(unsigned long long int hash, int node, int insertion_index,
 ////////////////////////////////////////////////////////////////////////////////
 void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_max, struct voxel_struct* voxel_data, int** voxel_mat_dens_ptr, long long int* voxel_mat_dens_bytes, short int* dose_ROI_x_max, short int* dose_ROI_y_max, short int* dose_ROI_z_max)    //!!FixedDensity_DBT!! Allocating "voxel_mat_dens" as a single material integer instead of "float2" (material+density)
 {
-  MASTER_THREAD if ((strstr(file_name_voxels,".zip")!=NULL)||(strstr(file_name_voxels,".tar.")!=NULL))
+  MAIN_THREAD if ((strstr(file_name_voxels,".zip")!=NULL)||(strstr(file_name_voxels,".tar.")!=NULL))
     printf("\n\n    -- WARNING load_voxels! The input voxel file name has the extension \'.zip\' or '.tar\'. Only \'.gz\' compression is allowed!!\n\n");     // !!zlib!!
     
   gzFile file_ptr = gzopen(file_name_voxels, "rb");  // Open the file with zlib: the file can be compressed with gzip or uncompressed.   !!zlib!!  
@@ -47,7 +76,7 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
     printf("\n\n   !! fopen ERROR load_voxels!! File %s does not exist!!\n", file_name_voxels);
     exit(-2);
   }
-  MASTER_THREAD 
+  MAIN_THREAD 
   {
     printf("\n    -- Reading binary voxel file in RAW format from file \'%s\':\n", file_name_voxels);
     if (strstr(file_name_voxels,".gz")==NULL)
@@ -62,32 +91,29 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
   
   long long int total_num_voxels = (long long int)voxel_data->num_voxels.x*(long long int)voxel_data->num_voxels.y*(long long int)voxel_data->num_voxels.z;
   
-  MASTER_THREAD printf("       Number of voxels in the geometry file (input file parameter):  %d x %d x %d = %lld voxels\n", voxel_data->num_voxels.x, voxel_data->num_voxels.y, voxel_data->num_voxels.z, total_num_voxels);
-  MASTER_THREAD printf("       Voxel size (input file parameter):  %f x %f x %f cm  (voxel volume=%e cm^3)\n", voxel_data->voxel_size.x, voxel_data->voxel_size.y, voxel_data->voxel_size.z, voxel_data->voxel_size.x*voxel_data->voxel_size.y*voxel_data->voxel_size.z);
-  MASTER_THREAD printf("       Voxel bounding box size:  %f x %f x %f cm\n", voxel_data->size_bbox.x, voxel_data->size_bbox.y,  voxel_data->size_bbox.z);
+  MAIN_THREAD printf("       Number of voxels in the geometry file (input file parameter):  %d x %d x %d = %lld voxels\n", voxel_data->num_voxels.x, voxel_data->num_voxels.y, voxel_data->num_voxels.z, total_num_voxels);
+  MAIN_THREAD printf("       Voxel size (input file parameter):  %f x %f x %f cm  (voxel volume=%e cm^3)\n", voxel_data->voxel_size.x, voxel_data->voxel_size.y, voxel_data->voxel_size.z, voxel_data->voxel_size.x*voxel_data->voxel_size.y*voxel_data->voxel_size.z);
+  MAIN_THREAD printf("       Voxel bounding box size:  %f x %f x %f cm\n", voxel_data->size_bbox.x, voxel_data->size_bbox.y,  voxel_data->size_bbox.z);
   
   
-  MASTER_THREAD printf("\n\n!!WARNING!! HARDCODED CONVERSION TABLE FROM MATERIAL NUMBER TO DENSITY (kernel function \"density_LUT\") !!DeBuG!!\n\n\n");   //!!DeBuG!! !!DeBuG!!
-
-
   if (*dose_ROI_x_max > -1)   // Check if tally not disabled
   {
     // -- Make sure the input number of voxels in the vox file is compatible with the input dose ROI (ROI assumes first voxel is index 0):
     if ( (*dose_ROI_x_max+1)>(voxel_data->num_voxels.x) || (*dose_ROI_y_max+1)>(voxel_data->num_voxels.y) || (*dose_ROI_z_max+1)>(voxel_data->num_voxels.z) )
     {
-      MASTER_THREAD printf("\n       The input region of interest for the dose deposition is larger than the size of the voxelized geometry:\n");
+      MAIN_THREAD printf("\n       The input region of interest for the dose deposition is larger than the size of the voxelized geometry:\n");
       *dose_ROI_x_max = min_value(voxel_data->num_voxels.x-1, *dose_ROI_x_max);
       *dose_ROI_y_max = min_value(voxel_data->num_voxels.y-1, *dose_ROI_y_max);
       *dose_ROI_z_max = min_value(voxel_data->num_voxels.z-1, *dose_ROI_z_max);
-      MASTER_THREAD printf(  "       updating the ROI max limits to fit the geometry -> dose_ROI_max=(%d, %d, %d)\n", *dose_ROI_x_max+1, *dose_ROI_y_max+1, *dose_ROI_z_max+1);         // Allowing the input of an ROI larger than the voxel volume: in this case some of the allocated memory will be wasted but the program will run ok.
+      MAIN_THREAD printf(  "       updating the ROI max limits to fit the geometry -> dose_ROI_max=(%d, %d, %d)\n", *dose_ROI_x_max+1, *dose_ROI_y_max+1, *dose_ROI_z_max+1);         // Allowing the input of an ROI larger than the voxel volume: in this case some of the allocated memory will be wasted but the program will run ok.
     }
     
     if ( (*dose_ROI_x_max+1)==(voxel_data->num_voxels.x) && (*dose_ROI_y_max+1)==(voxel_data->num_voxels.y) && (*dose_ROI_z_max+1)==(voxel_data->num_voxels.z) )
     {
-      MASTER_THREAD printf("       The voxel dose tally ROI covers the entire voxelized phantom: the dose to every voxel will be tallied.\n");
+      MAIN_THREAD printf("       The voxel dose tally ROI covers the entire voxelized phantom: the dose to every voxel will be tallied.\n");
     }
     else
-      MASTER_THREAD printf("       The voxel dose tally ROI covers only a fraction of the voxelized phantom: the dose to voxels outside the ROI will not be tallied.\n");
+      MAIN_THREAD printf("       The voxel dose tally ROI covers only a fraction of the voxelized phantom: the dose to voxels outside the ROI will not be tallied.\n");
   }
   
   // -- Store the inverse of the pixel sides (in cm) to speed up the particle location in voxels.
@@ -107,8 +133,8 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
     exit(-2);
   }
 
-  MASTER_THREAD printf("\n    -- !!FixedDensity_DBT!! Initializing the voxel material vector, density taken from look up table:  (%f Mbytes)...\n", (*voxel_mat_dens_bytes)/(1024.f*1024.f));   //!!FixedDensity_DBT!!
-  MASTER_THREAD fflush(stdout);
+  MAIN_THREAD printf("\n    -- Initializing the voxel material composition array:  (%f Mbytes)...\n", (*voxel_mat_dens_bytes)/(1024.f*1024.f));   //!!FixedDensity_DBT!!
+  MAIN_THREAD fflush(stdout);
   
   // -- Read the raw voxel data in small pieces of size (1024*1024) bytes (max 2^31 elements read at once with gzread):
   long long int read_voxels=0, pix0=0;
@@ -144,21 +170,6 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
   // -- Convert input values to Monte Carlo materials, and rotate phantom to have the source rotating around Z:
   //      ** Initial orientation: X=chest-nipple; Y=right-left; Z=feet-head --> Final orientation: X'=feet-head; Y'=Y=right-left; Z'=chest-nipple
   
-  
-  
-  
-  
-//   MASTER_THREAD printf("\n#   Voxelized breast phantom in penEasy/MC-GPU format.\n"); 
-//   MASTER_THREAD printf("#   Original data provided by Christian Graff (%s):\n", file_name_voxels);
-//   MASTER_THREAD printf("#   Materials number correspondence and original byte value (first material==0):\n");
-// //!!NOTE!!: insert correct material table here (depends on phantom):
-//   MASTER_THREAD printf("#        0=air(0), 1=fat(1), 2=skin(2), 3=glandular(29), 4=nipple(33), 5=ligament(88), 6=muscle(14), 7=duct(125),\n");
-//   MASTER_THREAD printf("#        8=artery(150)+vein(225), 9=terminal duct lobular unit(95), 10=compression_paddle_polystyrene(50), 11=lesion(200), 12=microcalc(250)\n\n");
-//   MASTER_THREAD fflush(stdout);
-  
-  
-  
-  
   int i, j, k;
   for (k=0; k<MAX_MATERIALS; k++)
     density_max[k] = -999.0f;   // Init array with an impossible low density value
@@ -175,111 +186,37 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
         
         if (input_ID<0 || input_ID>255)
         {
-          printf("\n\n   >>>ERROR ASSIGNING VOXEL VALUE>>> Read voxel values must be between 0 and 255 (unsigned char). Value read for voxel %lld (%d,%d,%d): %d ?\n\n",pix,i,j,k,input_ID);
+          printf("\n\n\n   >>>ERROR ASSIGNING VOXEL VALUE>>> Voxel values must be between 0 and 255 (unsigned char). Value read for voxel %lld (%d,%d,%d) = %d \n\n\n",pix,i,j,k,input_ID);
           exit(-2);
         }
-        
+        if (voxelId[input_ID]<0)
+        {
+           printf("\n\n\n   >>>ERROR ASSIGNING VOXEL VALUE>>> Found a voxel number that has not been assigned to any Monte Carlo material in the input file! Value read for voxel %lld (%d,%d,%d) = %d\n\n\n",pix,i,j,k, input_ID);
+           exit(-2);
+        }
+
         density_max[voxelId[input_ID]] = -1.0f;     // Flag that this material exists in a voxel of the geometry in binary format.
         
         (*voxel_mat_dens_ptr)[pix] = voxelId[input_ID];   // !!inputDensity!! Assign the required Monte Carlo material composition number to the voxel using the read voxel id and the voxel-to-material conversion table in global memory read from the input file (given after the material file name). The Monte Carlo material numbers are determined by the material file order in the input file.
-        
-
-        
-/*        
-//!!DeBuG!! HARDCODED Conversion table for breast phantoms (MUST MATCH THE "density_LOT" FUNCTION IN KERNEL!!):
-          // Compute material:
-          switch ((int)(*voxel_mat_dens_ptr)[pix])
-          {
-            case 0:
-              (*voxel_mat_dens_ptr)[pix] = 0;  // ==Air
-              density_max[0] = max_value(density_LUT[0], density_max[0]);     // Store maximum density for each material
-              break;
-            case 1:
-              (*voxel_mat_dens_ptr)[pix] = 1;  // ==fat
-              density_max[1] = max_value(density_LUT[1], density_max[1]);
-              break;
-            case 2:
-              (*voxel_mat_dens_ptr)[pix] = 2;  // ==skin
-              density_max[2] = max_value(density_LUT[2], density_max[2]);
-              break;
-            case 29:
-              (*voxel_mat_dens_ptr)[pix] = 3;  // ==glandular
-              density_max[3] = max_value(density_LUT[3], density_max[3]);
-              break;
-            case 33:
-              (*voxel_mat_dens_ptr)[pix] = 4;  // ==nipple
-              density_max[4] = max_value(density_LUT[4], density_max[4]);  // -> skin?
-              break;
-            case 40:
-              (*voxel_mat_dens_ptr)[pix] = 6;  // ==muscle
-              density_max[6] = max_value(density_LUT[6], density_max[6]);
-              break;
-            case 50:
-              (*voxel_mat_dens_ptr)[pix] = 10; // ==Compression Paddle
-              density_max[10] = max_value(density_LUT[10], density_max[10]); //  -> composition? polystyrene dens = 1.06   ;  PMMA dens = 1.19
-              break;
-            case 65:  
-              (*voxel_mat_dens_ptr)[pix] = 13; // ==Tungsten (bar patterns, MTF edge)
-              density_max[13] = max_value(density_LUT[13], density_max[13]);
-              break;
-            case 66:              
-              (*voxel_mat_dens_ptr)[pix] = 14; // ==a-Se (bar patterns)   I could use Selenium (d=4.5g/cm3) for the bar patterns instead of Tungsten (d=19.3g/cm3) to speed up the QC phantom simulations
-              density_max[14] = max_value(density_LUT[14], density_max[14]);
-              break;
-            case 88:
-              (*voxel_mat_dens_ptr)[pix] = 5;  // ==ligament(88)
-              density_max[5] = max_value(density_LUT[5], density_max[5]);  // -> connective Woodard?
-              break;
-            case 95:
-              (*voxel_mat_dens_ptr)[pix] = 9;  // ==terminal duct lobular unit(95)
-              density_max[9] = max_value(density_LUT[9], density_max[9]);   // -> muscle?
-              break;
-            case 125:
-              (*voxel_mat_dens_ptr)[pix] = 7;  // ==duct(125)
-              density_max[7] = max_value(density_LUT[7], density_max[7]);
-              break;
-            case 150:
-              (*voxel_mat_dens_ptr)[pix] = 8;  // ==artery(150)
-              density_max[8] = max_value(density_LUT[8], density_max[8]);
-              break;
-            case 200:
-              (*voxel_mat_dens_ptr)[pix] = 11;  // ==Mass/Signal
-              density_max[11] = max_value(density_LUT[11], density_max[11]); // -> glandular?
-              break;
-            case 225:
-              (*voxel_mat_dens_ptr)[pix] = 8;  // ==vein(225)
-              density_max[8] = max_value(density_LUT[8], density_max[8]);
-              break;
-            case 250:
-              (*voxel_mat_dens_ptr)[pix] = 12;  // ==Microcalcification
-              density_max[12] = max_value(density_LUT[12], density_max[12]);
-              break;              
-            default:
-              MASTER_THREAD printf(">>>ERROR ASSIGNING VOXEL VALUE>>> voxel(%lld) = %d ??\n", pix, (int)(*voxel_mat_dens_ptr)[pix]); fflush(stdout);
-          }
-*/
-
 
       }
     }
   }
 
-
-// !!VERBOSE!! Output transformed geometry
-//     k=51;
-//     for(j=1; j<=voxel_data->num_voxels.y; j++)
-//     {
-//       for(i=1; i<=voxel_data->num_voxels.x; i++)
-//       {
-//         int pix = (i-1) + (j-1)*voxel_data->num_voxels.x + (k-1)*voxel_data->num_voxels.x*voxel_data->num_voxels.y;
-//         printf("%d\n",(*voxel_mat_dens_ptr)[pix]);
-//       }
-//       printf("\n");
-//     }
-  
-// FILE* file_raw = fopen("geometry_debug.raw", "wb");   //!!VERBOSE!! Output transformed geometry
-// fwrite((*voxel_mat_dens_ptr), sizeof(char), *voxel_mat_dens_bytes, file_raw);   //!!VERBOSE!! Output transformed geometry
-// fclose(file_raw);     //!!VERBOSE!! Output transformed geometry
+        // !!VERBOSE!! Output transformed geometry
+        //     k=51;
+        //     for(j=1; j<=voxel_data->num_voxels.y; j++)
+        //     {
+        //       for(i=1; i<=voxel_data->num_voxels.x; i++)
+        //       {
+        //         int pix = (i-1) + (j-1)*voxel_data->num_voxels.x + (k-1)*voxel_data->num_voxels.x*voxel_data->num_voxels.y;
+        //         printf("%d\n",(*voxel_mat_dens_ptr)[pix]);
+        //       }
+        //       printf("\n");
+        //     }
+        // FILE* file_raw = fopen("geometry_debug.raw", "wb");   //!!VERBOSE!! Output transformed geometry
+        // fwrite((*voxel_mat_dens_ptr), sizeof(char), *voxel_mat_dens_bytes, file_raw);   //!!VERBOSE!! Output transformed geometry
+        // fclose(file_raw);     //!!VERBOSE!! Output transformed geometry
 
   
   free(voxel_data_buffer);
@@ -290,12 +227,10 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
 
 
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 //! Create a low resolution version of the input voxel data, and create a binary tree for each non-uniform coarse voxel.
 //
-//!       @param[in] myID  Thread id number (to identify output messages only). myID is used inside the macro "MASTER_THREAD".
+//!       @param[in] myID  Thread id number (to identify output messages only). myID is used inside the macro "MAIN_THREAD".
 //!       @param[in,out] voxel_data   Pointer to a structure containing the voxel number and size.
 //!       @param[in,out] voxel_mat_dens   Pointer to the vector with the voxel materials and densities. The high resolution geometry will be changed to a low resolution version
 //!       @param[out] bitree   Pointer to the vector storing the binary trees for each coarse voxel
@@ -305,8 +240,8 @@ void create_bitree(int myID, struct voxel_struct* voxel_data, int* voxel_mat_den
   
   clock_t clock_start = clock();
   
-  MASTER_THREAD printf("\n    -- Creating low resolution version of the input voxelized geometry, and binary tree structure for every non-uniform coarse voxels...\n");  
-  MASTER_THREAD fflush(stdout);
+  MAIN_THREAD printf("\n    -- Creating low resolution version of the input voxelized geometry, and binary tree structure for every non-uniform coarse voxels...\n");  
+  MAIN_THREAD fflush(stdout);
   
   int3 num_voxels_LowRes;   // Compute the number of low resolution voxels, after dividing by coarse voxels (rounding up)
   num_voxels_LowRes.x = (int)((float)voxel_data->num_voxels.x/(float)voxel_data->num_voxels_coarse.x + 0.99f);                    // !!bitree!! v1.5b
@@ -353,9 +288,6 @@ void create_bitree(int myID, struct voxel_struct* voxel_data, int* voxel_mat_den
   memset(hash_coarse_table_key,  0, sizeof(unsigned long long int)*(max_elements_hash_coarse_table));
   memset(hash_coarse_table_value,0, sizeof(int)*(max_elements_hash_coarse_table));
   memset(bitree,                 0, *bitree_bytes);
-//   int b;
-//   for(b=0; b<max_elements_bitree; b++)
-//     bitree[b] = IMPOSSIBLE_BITREE_INDEX;
 
   // ** Process each coarse voxel successively and output the coarse voxel matrix and its bitree as output file:
   int z_LowRes, y_LowRes, x_LowRes, i, j, k, node=-1, *node_ptr=&node, max_jump=0, merged_coarse_voxels=0, first_node=0,
@@ -431,8 +363,6 @@ void create_bitree(int myID, struct voxel_struct* voxel_data, int* voxel_mat_den
         {
           // -- Repeated coarse voxel! Delete repeated info and point to previous bitree location: 
           merged_coarse_voxels++;
-//           for(b=first_node; b<=node; b++) 
-//             bitree[b]=IMPOSSIBLE_BITREE_INDEX;   // Delete repeated nodes
           node = first_node-1;
           first_node = previous_first_node;
         }
@@ -460,21 +390,21 @@ void create_bitree(int myID, struct voxel_struct* voxel_data, int* voxel_mat_den
   *bitree_bytes = sizeof(char)*(node+1);
   *bitree_ptr = (char*) realloc(*bitree_ptr, *bitree_bytes);
   
-  MASTER_THREAD printf("  !!bitree!!  Number of low resolution voxels: %llu\n", Nvoxels_LowRes);
-  MASTER_THREAD printf("              Number of non-uniform low resolution voxels converted to binary trees: %d  (%f%%)\n", bitree_counter, 100.0f*bitree_counter/(float)Nvoxels_LowRes);
-  MASTER_THREAD printf("              Total number of binary tree nodes stored in memory for all trees: %d\n", node+1);
-  MASTER_THREAD printf("              Identical non-uniform low resolution voxels merged: %d  (%f%%)\n", merged_coarse_voxels, 100.0f*merged_coarse_voxels/(float)bitree_counter);   // (MAX_HASH_SIZE==%d), MAX_HASH_SIZE);
-  MASTER_THREAD printf("              Longest internal jump among all binary trees (max jump=128): %d\n\n", max_jump);
+  MAIN_THREAD printf("  !!bitree!!  Number of low resolution voxels: %llu\n", Nvoxels_LowRes);
+  MAIN_THREAD printf("              Number of non-uniform low resolution voxels converted to binary trees: %d  (%f%%)\n", bitree_counter, 100.0f*bitree_counter/(float)Nvoxels_LowRes);
+  MAIN_THREAD printf("              Total number of binary tree nodes stored in memory for all trees: %d\n", node+1);
+  MAIN_THREAD printf("              Identical non-uniform low resolution voxels merged: %d  (%f%%)\n", merged_coarse_voxels, 100.0f*merged_coarse_voxels/(float)bitree_counter);   // (MAX_HASH_SIZE==%d), MAX_HASH_SIZE);
+  MAIN_THREAD printf("              Longest internal jump among all binary trees (max jump=128): %d\n\n", max_jump);
   
   
-  //!!DeBuG!! !!DeBuG!!  -- Changing important geometric parameters below: the low resolution voxelized geometry will be used by default, only the bitree gives info on the higher res details.    !!DeBuG!! !!DeBuG!! 
+  //  -- Changing important geometric parameters below: the low resolution voxelized geometry will be used by default, only the bitree gives info on the higher res details.    !!DeBuG!! 
   
-  // -- Update the variable "num_voxels" to the size of the low resolution phantom: only the bitree will have the complete high res information!    !!DeBuG!! !!DeBuG!! !!DeBuG!!???  !!bitree!! 
-  MASTER_THREAD printf("              The geometric parameters \'num_voxels\' and \'voxel_size\' have been updated to the size of the low res voxel geometry: only the bitree has the original high res information.\n");
-  MASTER_THREAD printf("                 voxel_data->num_voxels.x=%d (before: %d) , voxel_data->num_voxels.y=%d (before: %d) , voxel_data->num_voxels.z=%d (before: %d)\n", num_voxels_LowRes.x, voxel_data->num_voxels.x, num_voxels_LowRes.y, voxel_data->num_voxels.y, num_voxels_LowRes.z, voxel_data->num_voxels.z);
-  MASTER_THREAD printf("                 voxel_data->voxel_size.x=%f cm (before: %f) , voxel_data->voxel_size.y=%f cm (before: %f) , voxel_data->voxel_size.z=%f cm (before: %f)\n\n", voxel_data->voxel_size.x*voxel_data->num_voxels_coarse.x, voxel_data->voxel_size.x, voxel_data->voxel_size.y*voxel_data->num_voxels_coarse.y, voxel_data->voxel_size.y, voxel_data->voxel_size.z*voxel_data->num_voxels_coarse.z, voxel_data->voxel_size.z);
+  // -- Update the variable "num_voxels" to the size of the low resolution phantom: only the bitree will have the complete high res information!      !!bitree!! 
+  MAIN_THREAD printf("              The geometric parameters \'num_voxels\' and \'voxel_size\' have been updated to the size of the low res voxel geometry: only the bitree has the original high res information.\n");
+  MAIN_THREAD printf("                 voxel_data->num_voxels.x=%d (before: %d) , voxel_data->num_voxels.y=%d (before: %d) , voxel_data->num_voxels.z=%d (before: %d)\n", num_voxels_LowRes.x, voxel_data->num_voxels.x, num_voxels_LowRes.y, voxel_data->num_voxels.y, num_voxels_LowRes.z, voxel_data->num_voxels.z);
+  MAIN_THREAD printf("                 voxel_data->voxel_size.x=%f cm (before: %f) , voxel_data->voxel_size.y=%f cm (before: %f) , voxel_data->voxel_size.z=%f cm (before: %f)\n\n", voxel_data->voxel_size.x*voxel_data->num_voxels_coarse.x, voxel_data->voxel_size.x, voxel_data->voxel_size.y*voxel_data->num_voxels_coarse.y, voxel_data->voxel_size.y, voxel_data->voxel_size.z*voxel_data->num_voxels_coarse.z, voxel_data->voxel_size.z);
   
-  voxel_data->num_voxels.x = num_voxels_LowRes.x;                                                    //!!DeBuG!! !!DeBuG!!  
+  voxel_data->num_voxels.x = num_voxels_LowRes.x;
   voxel_data->num_voxels.y = num_voxels_LowRes.y;
   voxel_data->num_voxels.z = num_voxels_LowRes.z;
   
@@ -482,13 +412,13 @@ void create_bitree(int myID, struct voxel_struct* voxel_data, int* voxel_mat_den
   voxel_data->voxel_size_HiRes.y = voxel_data->voxel_size.y;
   voxel_data->voxel_size_HiRes.z = voxel_data->voxel_size.z;
   
-  voxel_data->voxel_size.x = voxel_data->voxel_size.x * (float)voxel_data->num_voxels_coarse.x;      //!!DeBuG!! !!DeBuG!!  
+  voxel_data->voxel_size.x = voxel_data->voxel_size.x * (float)voxel_data->num_voxels_coarse.x;
   voxel_data->voxel_size.y = voxel_data->voxel_size.y * (float)voxel_data->num_voxels_coarse.y;
   voxel_data->voxel_size.z = voxel_data->voxel_size.z * (float)voxel_data->num_voxels_coarse.z;  
   voxel_data->inv_voxel_size.x = 1.0/voxel_data->voxel_size.x;
   voxel_data->inv_voxel_size.y = 1.0/voxel_data->voxel_size.y;
   voxel_data->inv_voxel_size.z = 1.0/voxel_data->voxel_size.z;  
-  //NOTE: "voxel_data->size_bbox" is not updated: a binary tree might go outside the original bbox but we don't need to track particles in there     //!!DeBuG!! !!DeBuG!!  
+  //NOTE: "voxel_data->size_bbox" is not updated: a binary tree might go outside the original bbox but we don't need to track particles in there     //!!DeBuG!! 
   
   printf("       Time spent creating the binary trees and the low res voxel geometry = %.3f s.\n\n", (double)(clock()-clock_start)/CLOCKS_PER_SEC);
   
@@ -585,7 +515,7 @@ unsigned long long int subdivide_node(int *node, const int first_node, const int
     if (2==(*node-my_node) && bitree[my_node+1]==bitree[my_node+2])  // The current node contains two final sub-nodes (leaves) with the same material: join them into one, and delete sub-nodes
     {
       bitree[my_node] = bitree[my_node+1];
-      bitree[my_node+1] = bitree[my_node+2] = 0;    // IMPOSSIBLE_BITREE_INDEX;
+      bitree[my_node+1] = bitree[my_node+2] = 0;
       *node = my_node;
       my_hash = hash_1st;                           // Both sides should have same hash in this case
     }
@@ -612,9 +542,6 @@ unsigned long long int subdivide_node(int *node, const int first_node, const int
           {
 
             bitree[my_node] = -1*(previous_2nd_branch - first_node);
-//             int l;
-//             for (l=node_2nd_start; l<=*node; l++)
-//               bitree[l] = IMPOSSIBLE_BITREE_INDEX;        // Reset end of bitree to default value
             *node = node_2nd_start - 1;                   // Move the counter to the end of the first half, because the second half is unnecessary
           }
           else
