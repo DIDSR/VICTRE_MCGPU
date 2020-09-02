@@ -927,7 +927,7 @@ int main(int argc, char **argv)
       
       
       #ifdef USING_MPI    
-        // Find out the total number of histories simulated in the speed test by all the GPUs. Note that this MPI call will be executed in parallel with the GPU kernel because it is located before the cudaThreadSynchronize command!
+        // Find out the total number of histories simulated in the speed test by all the GPUs. Note that this MPI call will be executed in parallel with the GPU kernel because it is located before the cudaDeviceSynchronize command!
       
         return_reduce = MPI_Allreduce(&histories_speed_test, &total_histories_speed_test, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);  
         if (MPI_SUCCESS != return_reduce)
@@ -938,7 +938,7 @@ int main(int argc, char **argv)
       #endif
             
       fflush(stdout);
-      cudaThreadSynchronize();    // Force the runtime to wait until GPU kernel has completed
+      cudaDeviceSynchronize();    // Force the runtime to wait until GPU kernel has completed
       getLastCudaError("\n\n !!Kernel execution failed while simulating particle tracks!! ");   // Check if the CUDA function returned any error
 
       float speed_test_time = float(clock()-clock_kernel)/CLOCKS_PER_SEC;
@@ -1082,7 +1082,7 @@ int main(int argc, char **argv)
     #endif
    
     fflush(stdout);
-    cudaThreadSynchronize();    // Force the runtime to wait until the GPU kernel is completed
+    cudaDeviceSynchronize();    // Force the runtime to wait until the GPU kernel is completed
     getLastCudaError("\n\n !!Kernel execution failed while simulating particle tracks!! ");  // Check if kernel execution generated any error
 
     float real_GPU_speed = total_histories_current_kernel_float/(float(clock()-clock_kernel)/CLOCKS_PER_SEC);  // GPU speed for all the image simulation, not just the speed test.
@@ -1185,7 +1185,7 @@ int main(int argc, char **argv)
         MASTER_THREAD printf("       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = %d, threads per block = 128\n", (int)(ceil(pixels_per_image/128.0f)+0.01f) );
         init_image_array_GPU<<<(int)(ceil(pixels_per_image/128.0f)+0.01f),128>>>(image_device, pixels_per_image);
         fflush(stdout);
-        cudaThreadSynchronize();
+        cudaDeviceSynchronize();
         getLastCudaError("\n\n !!Kernel execution failed initializing the image array!! ");  // Check if kernel execution generated any error:
     }
     
@@ -1250,7 +1250,7 @@ int main(int argc, char **argv)
   cudaFree(mfp_table_a_device);
   cudaFree(mfp_table_b_device);
   cudaFree(voxels_Edep_device);
-  checkCudaErrors( cudaThreadExit() );
+  checkCudaErrors(cudaDeviceReset());
 
   MASTER_THREAD printf("       ==> CUDA: Time freeing the device memory and ending the GPU threads: %.6f s\n", float(clock()-clock_kernel)/CLOCKS_PER_SEC);
 
@@ -1269,7 +1269,8 @@ int main(int argc, char **argv)
   MASTER_THREAD clock_start = clock();
   
   if (dose_ROI_x_max > -1)
-  {   
+  {  
+    #ifdef USING_MPI	  
     if (numprocs>1)
     {
       // -- Use MPI_Reduce to accumulate the dose from all projections:      
@@ -1308,7 +1309,8 @@ int main(int argc, char **argv)
         voxels_Edep_total = NULL;           // This pointer is not needed by now
       }
     }
-        
+    #endif
+
     // -- Report the total dose for all the projections:
     MASTER_THREAD report_voxels_dose(file_dose_output, num_projections, &voxel_data, voxel_mat_dens, voxels_Edep, time_total_MC_simulation, total_histories, dose_ROI_x_min, dose_ROI_x_max, dose_ROI_y_min, dose_ROI_y_max, dose_ROI_z_min, dose_ROI_z_max, source_data);
   }
@@ -3068,7 +3070,7 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
 
   init_image_array_GPU<<<(int)(ceil(pixels_per_image/128.0f)+0.01f),128>>>(*image_device, pixels_per_image);
     fflush(stdout);
-    cudaThreadSynchronize();      // Force the runtime to wait until all device tasks have completed
+    cudaDeviceSynchronize();      // Force the runtime to wait until all device tasks have completed
     getLastCudaError("\n\n !!Kernel execution failed initializing the image array!! ");  // Check if kernel execution generated any error:
 
 
@@ -3091,7 +3093,7 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
     while (num_blocks > 65500);    
     MASTER_THREAD printf("       ==> CUDA: Launching kernel to initialize the device dose deposition to 0: number of blocks = %d, threads per block = %d\n", num_blocks, num_threads_block);  
     init_dose_array_GPU<<<num_blocks,num_threads_block>>>(*voxels_Edep_device, num_voxels_dose);    
-      cudaThreadSynchronize();
+      cudaDeviceSynchronize();
       getLastCudaError("\n\n !!Kernel execution failed initializing the dose array!! ");  // Check if kernel execution generated any error:
 */
 
