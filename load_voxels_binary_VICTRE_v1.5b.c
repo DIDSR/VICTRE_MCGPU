@@ -34,7 +34,7 @@
 //
 //!                     @file    load_voxels_binary_VICTRE_v1.5b.c
 //!                     @author  Andreu Badal (Andreu.Badal-Soler{at}fda.hhs.gov)
-//!                     @date    2018/01/01
+//!                     @date    2020/09/01
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -66,7 +66,7 @@ void add_hash_sorted(unsigned long long int hash, int node, int insertion_index,
 ////////////////////////////////////////////////////////////////////////////////
 void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_max, struct voxel_struct* voxel_data, int** voxel_mat_dens_ptr, long long int* voxel_mat_dens_bytes, short int* dose_ROI_x_max, short int* dose_ROI_y_max, short int* dose_ROI_z_max)    //!!FixedDensity_DBT!! Allocating "voxel_mat_dens" as a single material integer instead of "float2" (material+density)
 {
-  MASTER_THREAD if ((strstr(file_name_voxels,".zip")!=NULL)||(strstr(file_name_voxels,".tar.")!=NULL))
+  MAIN_THREAD if ((strstr(file_name_voxels,".zip")!=NULL)||(strstr(file_name_voxels,".tar.")!=NULL))
     printf("\n\n    -- WARNING load_voxels! The input voxel file name has the extension \'.zip\' or '.tar\'. Only \'.gz\' compression is allowed!!\n\n");     // !!zlib!!
     
   gzFile file_ptr = gzopen(file_name_voxels, "rb");  // Open the file with zlib: the file can be compressed with gzip or uncompressed.   !!zlib!!  
@@ -76,7 +76,7 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
     printf("\n\n   !! fopen ERROR load_voxels!! File %s does not exist!!\n", file_name_voxels);
     exit(-2);
   }
-  MASTER_THREAD 
+  MAIN_THREAD 
   {
     printf("\n    -- Reading binary voxel file in RAW format from file \'%s\':\n", file_name_voxels);
     if (strstr(file_name_voxels,".gz")==NULL)
@@ -91,9 +91,9 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
   
   long long int total_num_voxels = (long long int)voxel_data->num_voxels.x*(long long int)voxel_data->num_voxels.y*(long long int)voxel_data->num_voxels.z;
   
-  MASTER_THREAD printf("       Number of voxels in the geometry file (input file parameter):  %d x %d x %d = %lld voxels\n", voxel_data->num_voxels.x, voxel_data->num_voxels.y, voxel_data->num_voxels.z, total_num_voxels);
-  MASTER_THREAD printf("       Voxel size (input file parameter):  %f x %f x %f cm  (voxel volume=%e cm^3)\n", voxel_data->voxel_size.x, voxel_data->voxel_size.y, voxel_data->voxel_size.z, voxel_data->voxel_size.x*voxel_data->voxel_size.y*voxel_data->voxel_size.z);
-  MASTER_THREAD printf("       Voxel bounding box size:  %f x %f x %f cm\n", voxel_data->size_bbox.x, voxel_data->size_bbox.y,  voxel_data->size_bbox.z);
+  MAIN_THREAD printf("       Number of voxels in the geometry file (input file parameter):  %d x %d x %d = %lld voxels\n", voxel_data->num_voxels.x, voxel_data->num_voxels.y, voxel_data->num_voxels.z, total_num_voxels);
+  MAIN_THREAD printf("       Voxel size (input file parameter):  %f x %f x %f cm  (voxel volume=%e cm^3)\n", voxel_data->voxel_size.x, voxel_data->voxel_size.y, voxel_data->voxel_size.z, voxel_data->voxel_size.x*voxel_data->voxel_size.y*voxel_data->voxel_size.z);
+  MAIN_THREAD printf("       Voxel bounding box size:  %f x %f x %f cm\n", voxel_data->size_bbox.x, voxel_data->size_bbox.y,  voxel_data->size_bbox.z);
   
   
   if (*dose_ROI_x_max > -1)   // Check if tally not disabled
@@ -101,19 +101,19 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
     // -- Make sure the input number of voxels in the vox file is compatible with the input dose ROI (ROI assumes first voxel is index 0):
     if ( (*dose_ROI_x_max+1)>(voxel_data->num_voxels.x) || (*dose_ROI_y_max+1)>(voxel_data->num_voxels.y) || (*dose_ROI_z_max+1)>(voxel_data->num_voxels.z) )
     {
-      MASTER_THREAD printf("\n       The input region of interest for the dose deposition is larger than the size of the voxelized geometry:\n");
+      MAIN_THREAD printf("\n       The input region of interest for the dose deposition is larger than the size of the voxelized geometry:\n");
       *dose_ROI_x_max = min_value(voxel_data->num_voxels.x-1, *dose_ROI_x_max);
       *dose_ROI_y_max = min_value(voxel_data->num_voxels.y-1, *dose_ROI_y_max);
       *dose_ROI_z_max = min_value(voxel_data->num_voxels.z-1, *dose_ROI_z_max);
-      MASTER_THREAD printf(  "       updating the ROI max limits to fit the geometry -> dose_ROI_max=(%d, %d, %d)\n", *dose_ROI_x_max+1, *dose_ROI_y_max+1, *dose_ROI_z_max+1);         // Allowing the input of an ROI larger than the voxel volume: in this case some of the allocated memory will be wasted but the program will run ok.
+      MAIN_THREAD printf(  "       updating the ROI max limits to fit the geometry -> dose_ROI_max=(%d, %d, %d)\n", *dose_ROI_x_max+1, *dose_ROI_y_max+1, *dose_ROI_z_max+1);         // Allowing the input of an ROI larger than the voxel volume: in this case some of the allocated memory will be wasted but the program will run ok.
     }
     
     if ( (*dose_ROI_x_max+1)==(voxel_data->num_voxels.x) && (*dose_ROI_y_max+1)==(voxel_data->num_voxels.y) && (*dose_ROI_z_max+1)==(voxel_data->num_voxels.z) )
     {
-      MASTER_THREAD printf("       The voxel dose tally ROI covers the entire voxelized phantom: the dose to every voxel will be tallied.\n");
+      MAIN_THREAD printf("       The voxel dose tally ROI covers the entire voxelized phantom: the dose to every voxel will be tallied.\n");
     }
     else
-      MASTER_THREAD printf("       The voxel dose tally ROI covers only a fraction of the voxelized phantom: the dose to voxels outside the ROI will not be tallied.\n");
+      MAIN_THREAD printf("       The voxel dose tally ROI covers only a fraction of the voxelized phantom: the dose to voxels outside the ROI will not be tallied.\n");
   }
   
   // -- Store the inverse of the pixel sides (in cm) to speed up the particle location in voxels.
@@ -133,8 +133,8 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
     exit(-2);
   }
 
-  MASTER_THREAD printf("\n    -- Initializing the voxel material composition array:  (%f Mbytes)...\n", (*voxel_mat_dens_bytes)/(1024.f*1024.f));   //!!FixedDensity_DBT!!
-  MASTER_THREAD fflush(stdout);
+  MAIN_THREAD printf("\n    -- Initializing the voxel material composition array:  (%f Mbytes)...\n", (*voxel_mat_dens_bytes)/(1024.f*1024.f));   //!!FixedDensity_DBT!!
+  MAIN_THREAD fflush(stdout);
   
   // -- Read the raw voxel data in small pieces of size (1024*1024) bytes (max 2^31 elements read at once with gzread):
   long long int read_voxels=0, pix0=0;
@@ -230,7 +230,7 @@ void load_voxels_binary_VICTRE(int myID, char* file_name_voxels, float* density_
 ////////////////////////////////////////////////////////////////////////////////
 //! Create a low resolution version of the input voxel data, and create a binary tree for each non-uniform coarse voxel.
 //
-//!       @param[in] myID  Thread id number (to identify output messages only). myID is used inside the macro "MASTER_THREAD".
+//!       @param[in] myID  Thread id number (to identify output messages only). myID is used inside the macro "MAIN_THREAD".
 //!       @param[in,out] voxel_data   Pointer to a structure containing the voxel number and size.
 //!       @param[in,out] voxel_mat_dens   Pointer to the vector with the voxel materials and densities. The high resolution geometry will be changed to a low resolution version
 //!       @param[out] bitree   Pointer to the vector storing the binary trees for each coarse voxel
@@ -240,8 +240,8 @@ void create_bitree(int myID, struct voxel_struct* voxel_data, int* voxel_mat_den
   
   clock_t clock_start = clock();
   
-  MASTER_THREAD printf("\n    -- Creating low resolution version of the input voxelized geometry, and binary tree structure for every non-uniform coarse voxels...\n");  
-  MASTER_THREAD fflush(stdout);
+  MAIN_THREAD printf("\n    -- Creating low resolution version of the input voxelized geometry, and binary tree structure for every non-uniform coarse voxels...\n");  
+  MAIN_THREAD fflush(stdout);
   
   int3 num_voxels_LowRes;   // Compute the number of low resolution voxels, after dividing by coarse voxels (rounding up)
   num_voxels_LowRes.x = (int)((float)voxel_data->num_voxels.x/(float)voxel_data->num_voxels_coarse.x + 0.99f);                    // !!bitree!! v1.5b
@@ -390,19 +390,19 @@ void create_bitree(int myID, struct voxel_struct* voxel_data, int* voxel_mat_den
   *bitree_bytes = sizeof(char)*(node+1);
   *bitree_ptr = (char*) realloc(*bitree_ptr, *bitree_bytes);
   
-  MASTER_THREAD printf("  !!bitree!!  Number of low resolution voxels: %llu\n", Nvoxels_LowRes);
-  MASTER_THREAD printf("              Number of non-uniform low resolution voxels converted to binary trees: %d  (%f%%)\n", bitree_counter, 100.0f*bitree_counter/(float)Nvoxels_LowRes);
-  MASTER_THREAD printf("              Total number of binary tree nodes stored in memory for all trees: %d\n", node+1);
-  MASTER_THREAD printf("              Identical non-uniform low resolution voxels merged: %d  (%f%%)\n", merged_coarse_voxels, 100.0f*merged_coarse_voxels/(float)bitree_counter);   // (MAX_HASH_SIZE==%d), MAX_HASH_SIZE);
-  MASTER_THREAD printf("              Longest internal jump among all binary trees (max jump=128): %d\n\n", max_jump);
+  MAIN_THREAD printf("  !!bitree!!  Number of low resolution voxels: %llu\n", Nvoxels_LowRes);
+  MAIN_THREAD printf("              Number of non-uniform low resolution voxels converted to binary trees: %d  (%f%%)\n", bitree_counter, 100.0f*bitree_counter/(float)Nvoxels_LowRes);
+  MAIN_THREAD printf("              Total number of binary tree nodes stored in memory for all trees: %d\n", node+1);
+  MAIN_THREAD printf("              Identical non-uniform low resolution voxels merged: %d  (%f%%)\n", merged_coarse_voxels, 100.0f*merged_coarse_voxels/(float)bitree_counter);   // (MAX_HASH_SIZE==%d), MAX_HASH_SIZE);
+  MAIN_THREAD printf("              Longest internal jump among all binary trees (max jump=128): %d\n\n", max_jump);
   
   
   //  -- Changing important geometric parameters below: the low resolution voxelized geometry will be used by default, only the bitree gives info on the higher res details.    !!DeBuG!! 
   
   // -- Update the variable "num_voxels" to the size of the low resolution phantom: only the bitree will have the complete high res information!      !!bitree!! 
-  MASTER_THREAD printf("              The geometric parameters \'num_voxels\' and \'voxel_size\' have been updated to the size of the low res voxel geometry: only the bitree has the original high res information.\n");
-  MASTER_THREAD printf("                 voxel_data->num_voxels.x=%d (before: %d) , voxel_data->num_voxels.y=%d (before: %d) , voxel_data->num_voxels.z=%d (before: %d)\n", num_voxels_LowRes.x, voxel_data->num_voxels.x, num_voxels_LowRes.y, voxel_data->num_voxels.y, num_voxels_LowRes.z, voxel_data->num_voxels.z);
-  MASTER_THREAD printf("                 voxel_data->voxel_size.x=%f cm (before: %f) , voxel_data->voxel_size.y=%f cm (before: %f) , voxel_data->voxel_size.z=%f cm (before: %f)\n\n", voxel_data->voxel_size.x*voxel_data->num_voxels_coarse.x, voxel_data->voxel_size.x, voxel_data->voxel_size.y*voxel_data->num_voxels_coarse.y, voxel_data->voxel_size.y, voxel_data->voxel_size.z*voxel_data->num_voxels_coarse.z, voxel_data->voxel_size.z);
+  MAIN_THREAD printf("              The geometric parameters \'num_voxels\' and \'voxel_size\' have been updated to the size of the low res voxel geometry: only the bitree has the original high res information.\n");
+  MAIN_THREAD printf("                 voxel_data->num_voxels.x=%d (before: %d) , voxel_data->num_voxels.y=%d (before: %d) , voxel_data->num_voxels.z=%d (before: %d)\n", num_voxels_LowRes.x, voxel_data->num_voxels.x, num_voxels_LowRes.y, voxel_data->num_voxels.y, num_voxels_LowRes.z, voxel_data->num_voxels.z);
+  MAIN_THREAD printf("                 voxel_data->voxel_size.x=%f cm (before: %f) , voxel_data->voxel_size.y=%f cm (before: %f) , voxel_data->voxel_size.z=%f cm (before: %f)\n\n", voxel_data->voxel_size.x*voxel_data->num_voxels_coarse.x, voxel_data->voxel_size.x, voxel_data->voxel_size.y*voxel_data->num_voxels_coarse.y, voxel_data->voxel_size.y, voxel_data->voxel_size.z*voxel_data->num_voxels_coarse.z, voxel_data->voxel_size.z);
   
   voxel_data->num_voxels.x = num_voxels_LowRes.x;
   voxel_data->num_voxels.y = num_voxels_LowRes.y;

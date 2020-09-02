@@ -47,8 +47,8 @@
 //#define USING_MPI
 
 
-//! MPI macro: mark commands to be executed only by the master thread (myID==0).
-#define MASTER_THREAD if(0==myID)
+//! MPI macro: mark commands to be executed only by the main thread (myID==0).
+#define MAIN_THREAD if(0==myID)
 
 //! Maximum number of projections allowed in the CT simulation (not limited by the constant memory because stored in global and shared memory):
 #define  MAX_NUM_PROJECTIONS  720

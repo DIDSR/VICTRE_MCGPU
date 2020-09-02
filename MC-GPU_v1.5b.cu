@@ -408,14 +408,14 @@ int main(int argc, char **argv)
   fflush(stdout);   // Clear the screen output buffer
   MPI_Barrier(MPI_COMM_WORLD);   // Synchronize MPI threads  
   
-  MASTER_THREAD printf("              -- Time spent initializing the MPI world (MPI_Barrier): %.3f s\n", ((double)(clock()-clock_start))/CLOCKS_PER_SEC);
+  MAIN_THREAD printf("              -- Time spent initializing the MPI world (MPI_Barrier): %.3f s\n", ((double)(clock()-clock_start))/CLOCKS_PER_SEC);
   
   
 #else  
   int myID = 0, numprocs = 1;   // Only one CPU thread used when MPI is not activated (multiple projections will be simulated sequentially).
 #endif
 
-  MASTER_THREAD 
+  MAIN_THREAD 
   { 
       printf("\n\n     *****************************************************************************\n");
       printf(    "     ***     MC-GPU, version 1.5b_DBT (https://github.com/DIDSR/VICTRE_MCGPU)  ***\n");
@@ -433,10 +433,10 @@ int main(int argc, char **argv)
   }
     
   
-  // The "MASTER_THREAD" macro prints the messages just once when using MPI threads (it has no effect if MPI is not used):  MASTER_THREAD == "if(0==myID)"
-  MASTER_THREAD printf  ("\n             *** CUDA SIMULATION IN THE GPU ***\n");
-  MASTER_THREAD printf("\n    -- INITIALIZATION phase:\n");
-  MASTER_THREAD fflush(stdout);   // Clear the screen output buffer for the master thread
+  // The "MAIN_THREAD" macro prints the messages just once when using MPI threads (it has no effect if MPI is not used):  MAIN_THREAD == "if(0==myID)"
+  MAIN_THREAD printf  ("\n             *** CUDA SIMULATION IN THE GPU ***\n");
+  MAIN_THREAD printf("\n    -- INITIALIZATION phase:\n");
+  MAIN_THREAD fflush(stdout);   // Clear the screen output buffer for the main thread
   
   
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -503,13 +503,13 @@ int main(int argc, char **argv)
 
 
   // *** Read the energy spectrum and initialize its sampling with the Walker aliasing method:
-  MASTER_THREAD printf("    -- Reading the energy spectrum and initializing the Walker aliasing sampling algorithm.\n");
+  MAIN_THREAD printf("    -- Reading the energy spectrum and initializing the Walker aliasing sampling algorithm.\n");
   float mean_energy_spectrum = 0.0f;  
   init_energy_spectrum(file_name_espc, &source_energy_data, &mean_energy_spectrum);
   
   
   // *** Output some of the data read to make sure everything was correctly read:
-  MASTER_THREAD
+  MAIN_THREAD
   {
         printf("\n    -- Data read from the input file:\n");
         if (total_histories < (unsigned long long int)(100000))
@@ -623,7 +623,7 @@ int main(int argc, char **argv)
 
     double mass_materials[MAX_MATERIALS];
     
-  // !!bitree!! If the binary tree is used, read the geometry only with the master thread, and then broadcast the new data:
+  // !!bitree!! If the binary tree is used, read the geometry only with the main thread, and then broadcast the new data:
   //            if the tree is not used, every thread reads the input geometry at the same time.
   if (0==myID || (voxel_data.num_voxels_coarse.x)==0)
   {
@@ -658,18 +658,18 @@ int main(int argc, char **argv)
     {
       if (dose_ROI_x_max>0)
       {
-        MASTER_THREAD printf("\n\n   !!ERROR!! Sorry, the voxel dose deposition tally cannot be used when the binary tree is active. Please, disable the binary tree.\n\n");
+        MAIN_THREAD printf("\n\n   !!ERROR!! Sorry, the voxel dose deposition tally cannot be used when the binary tree is active. Please, disable the binary tree.\n\n");
         exit(-1);
       }
       
-      MASTER_THREAD printf("\n       !!bitree!! Creating a binary tree structure to minimize memory use.\n");  // !!bitree!! v1.5b
+      MAIN_THREAD printf("\n       !!bitree!! Creating a binary tree structure to minimize memory use.\n");  // !!bitree!! v1.5b
 
       
       create_bitree(myID, &voxel_data, voxel_mat_dens, &bitree, &bitree_bytes, &voxel_geometry_LowRes, &voxel_geometry_LowRes_bytes);     //!!bitree!! v1.5b
       
-      MASTER_THREAD printf("       >> RAM memory allocation: original voxelized geometry = %f MBytes; low resolution voxelized geometry = %f MBytes;\n", voxel_mat_dens_bytes/(1024.f*1024.f), voxel_geometry_LowRes_bytes/(1024.f*1024.f));
-      MASTER_THREAD printf("                                 binary tree = %f MBytes; image vector = %f MBytes; data structures = %f Mbytes\n", bitree_bytes/(1024.f*1024.f), image_bytes/(1024.f*1024.f), (sizeof(struct voxel_struct)+sizeof(struct source_struct)+sizeof(struct detector_struct)+sizeof(struct linear_interp)+2*mfp_table_bytes+sizeof(struct rayleigh_struct)+sizeof(struct compton_struct))/(1024.f*1024.f));
-      MASTER_THREAD printf("                                 (reduction in memory use with bitree: [low res voxels + binary tree]-[high res voxels] = %f MBytes = %.3f%%)\n", (voxel_geometry_LowRes_bytes+bitree_bytes-voxel_mat_dens_bytes)/(1024.f*1024.f), 100.f*(voxel_geometry_LowRes_bytes+bitree_bytes-voxel_mat_dens_bytes)/voxel_mat_dens_bytes);
+      MAIN_THREAD printf("       >> RAM memory allocation: original voxelized geometry = %f MBytes; low resolution voxelized geometry = %f MBytes;\n", voxel_mat_dens_bytes/(1024.f*1024.f), voxel_geometry_LowRes_bytes/(1024.f*1024.f));
+      MAIN_THREAD printf("                                 binary tree = %f MBytes; image vector = %f MBytes; data structures = %f Mbytes\n", bitree_bytes/(1024.f*1024.f), image_bytes/(1024.f*1024.f), (sizeof(struct voxel_struct)+sizeof(struct source_struct)+sizeof(struct detector_struct)+sizeof(struct linear_interp)+2*mfp_table_bytes+sizeof(struct rayleigh_struct)+sizeof(struct compton_struct))/(1024.f*1024.f));
+      MAIN_THREAD printf("                                 (reduction in memory use with bitree: [low res voxels + binary tree]-[high res voxels] = %f MBytes = %.3f%%)\n", (voxel_geometry_LowRes_bytes+bitree_bytes-voxel_mat_dens_bytes)/(1024.f*1024.f), 100.f*(voxel_geometry_LowRes_bytes+bitree_bytes-voxel_mat_dens_bytes)/voxel_mat_dens_bytes);
       
       // -- Replace the high resolution version of the geometry by the low resolution version:       !!DeBuG!! voxel dose tally can't be used now!!    
       free(voxel_mat_dens);                                  //!!bitree!! v1.5b
@@ -678,14 +678,14 @@ int main(int argc, char **argv)
     }
     else
     {
-      MASTER_THREAD printf("\n       !!bitree!! Binary tree structure disabled: standard voxelized geometry in use.\n\n");  // !!bitree!! v1.5b
-      MASTER_THREAD printf("       >> RAM memory allocation: voxelized geometry = %f MBytes; image vector = %f MBytes; data structures = %f Mbytes\n", voxel_mat_dens_bytes/(1024.f*1024.f), image_bytes/(1024.f*1024.f), (sizeof(struct voxel_struct)+sizeof(struct source_struct)+sizeof(struct detector_struct)+sizeof(struct linear_interp)+2*mfp_table_bytes+sizeof(struct rayleigh_struct)+sizeof(struct compton_struct))/(1024.f*1024.f));
+      MAIN_THREAD printf("\n       !!bitree!! Binary tree structure disabled: standard voxelized geometry in use.\n\n");  // !!bitree!! v1.5b
+      MAIN_THREAD printf("       >> RAM memory allocation: voxelized geometry = %f MBytes; image vector = %f MBytes; data structures = %f Mbytes\n", voxel_mat_dens_bytes/(1024.f*1024.f), image_bytes/(1024.f*1024.f), (sizeof(struct voxel_struct)+sizeof(struct source_struct)+sizeof(struct detector_struct)+sizeof(struct linear_interp)+2*mfp_table_bytes+sizeof(struct rayleigh_struct)+sizeof(struct compton_struct))/(1024.f*1024.f));
     }
   
   }
   fflush(stdout);
   
-  // !!bitree!! If the binary tree is used, broadcast the tree data and all auxiliary data from master to every other thread:
+  // !!bitree!! If the binary tree is used, broadcast the tree data and all auxiliary data from main to every other thread:
   #ifdef USING_MPI
   if (numprocs>1 && (voxel_data.num_voxels_coarse.x)!=0)
   {
@@ -725,7 +725,7 @@ int main(int argc, char **argv)
   // -- Check that the input material tables and the x-ray source are consistent:
   if ( (source_energy_data.espc[0] < mfp_table_data.e0) || (source_energy_data.espc[source_energy_data.num_bins_espc] > (mfp_table_data.e0 + (mfp_table_data.num_values-1)/mfp_table_data.ide)) )
   {
-    MASTER_THREAD 
+    MAIN_THREAD 
     {
       printf("\n\n\n !!ERROR!! The input x-ray source energy spectrum minimum (%.3f eV) and maximum (%.3f eV) energy values\n", source_energy_data.espc[0], source_energy_data.espc[source_energy_data.num_bins_espc]);
       printf(  "           are outside the tabulated energy interval for the material properties tables (from %.3f to %.3f eV)!!\n", mfp_table_data.e0, (mfp_table_data.e0+(mfp_table_data.num_values-1)/mfp_table_data.ide));
@@ -785,7 +785,7 @@ int main(int argc, char **argv)
   if (0!=myID)    // Keep the geometry data for the MPI root because the voxel densities are still needed to compute the final doses
     free(voxel_mat_dens);
     
-  MASTER_THREAD
+  MAIN_THREAD
   {
     current_time=time(NULL);
     printf("\n    -- INITIALIZATION finished: elapsed time = %.3f s. \n\n", ((double)(clock()-clock_start))/CLOCKS_PER_SEC);
@@ -801,7 +801,7 @@ int main(int argc, char **argv)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
   
   
-  MASTER_THREAD
+  MAIN_THREAD
   {
     current_time=time(NULL);
     printf("\n\n    -- MONTE CARLO LOOP phase. Time: %s\n\n", ctime(&current_time)); 
@@ -847,7 +847,7 @@ int main(int argc, char **argv)
     {
       // -- !!DBT!! Simulate the first 0 deg projection (mammo) with almost as many histories (SCALE_MAMMO_DBT factor) as the whole tomographic scan to follow:  !!DBTv1.4!!
       total_histories = total_histories_INPUT * num_projections * SCALE_MAMMO_DBT;   //!!DBTv1.4!!  Scaling dose a factor SCALE_MAMMO_DBT (eg, factor 2/3 for 1 mGy mammo for 1.5 mGy DBT)
-      MASTER_THREAD 
+      MAIN_THREAD 
       {
         printf("\n\n  !!DBT!! Simulating first a 0 degree projection with %.4f times the number of histories as the complete scan with %d projections = %lld histories\n", SCALE_MAMMO_DBT, num_projections, total_histories);
         printf(    "          Afterwards, simulate the tomo acquisition starting at most negative angle and ending at most positive angle.\n");                      // !!DBT!! !!DBTv1.4!!
@@ -855,7 +855,7 @@ int main(int argc, char **argv)
       }
     }
     else if (flag_simulateMammoAfterDBT && 1==num_p)
-      MASTER_THREAD printf("\n\n !!DBT!!  After the first full simulation (eg, mammo), simulate a DBT acquisition (starting at neg angle) with the input number histories per projections.\n\n");
+      MAIN_THREAD printf("\n\n !!DBT!!  After the first full simulation (eg, mammo), simulate a DBT acquisition (starting at neg angle) with the input number histories per projections.\n\n");
 
   
     if (0==num_p)
@@ -864,7 +864,7 @@ int main(int argc, char **argv)
       current_angle = source_data[0].angle_offset + (num_p-1) * source_data[0].angle_per_projection;
     
     
-    MASTER_THREAD 
+    MAIN_THREAD 
       if (num_projections!=1)
         if (flag_simulateMammoAfterDBT && 0==num_p)
           printf("\n\n\n\n   << Simulating a 0 degree projection (mammography) with %d * %f as many histories as each tomographic projection >>\n\n", num_projections, SCALE_MAMMO_DBT);
@@ -976,10 +976,10 @@ int main(int argc, char **argv)
           if (MPI_SUCCESS != return_reduce)
             printf("\n\n !!ERROR!! Error reducing (MPI_Allreduce) the speed test results??? return_reduce = %d for thread %d\n\n\n", return_reduce, myID);
           else
-            MASTER_THREAD 
+            MAIN_THREAD 
             {
               printf("\n       -- Total speed for all GPUs (MPI_Allreduce) = %.3f hist/s; total histories simulated in the speed test (MPI_Allreduce) = %lld.\n", total_speed, total_histories_speed_test);
-              printf("          The master thread will simulate %.2f%% of the x rays in the simulation.\n",  100.0f*node_speed/total_speed);
+              printf("          The main thread will simulate %.2f%% of the x rays in the simulation.\n",  100.0f*node_speed/total_speed);
             }
         #else
           total_speed = node_speed;
@@ -1031,7 +1031,7 @@ int main(int argc, char **argv)
     
     fflush(stdout);
     #ifdef USING_MPI  
-      MASTER_THREAD printf("\n\n");
+      MAIN_THREAD printf("\n\n");
       printf("        ==> CUDA (MPI process #%d in \"%s\"): Executing %d blocks of %d threads, with %d histories in each thread: %lld histories in total (random seed=%d, num_p=%d).\n", myID, MPI_processor_name, total_threads_blocks, num_threads_per_block, histories_per_thread, total_histories, seed_input, num_p);
       MPI_Barrier(MPI_COMM_WORLD);   // Synchronize MPI threads to better organize output
     #else
@@ -1068,7 +1068,7 @@ int main(int argc, char **argv)
     #ifdef USING_MPI 
       if (numprocs>1)  // Using more than 1 MPI thread:
       {
-        MASTER_THREAD
+        MAIN_THREAD
         {
           if (MPI_SUCCESS != return_reduce)
             printf("\n\n !!ERROR!! Error getting the total number of particles simulated in all the GPUs (MPI_Reduce). return_reduce = %d.\n\n\n", return_reduce);
@@ -1108,12 +1108,12 @@ int main(int argc, char **argv)
     if (numprocs>1)  // Using more than 1 MPI thread
     {
       // -- Add the images simulated in all the MPI threads:      
-      MASTER_THREAD printf("\n        >>  Synchronize the MPI threads and accumulate the simulated images (MPI_Reduce).\n\n");                    
+      MAIN_THREAD printf("\n        >>  Synchronize the MPI threads and accumulate the simulated images (MPI_Reduce).\n\n");                    
       
-      // Allocate the memory for the final image in the master thread:
+      // Allocate the memory for the final image in the main thread:
       unsigned long long int *image_MPI = NULL;
-      MASTER_THREAD image_MPI = (unsigned long long int*) malloc(image_bytes);
-      MASTER_THREAD if (image_MPI==NULL)
+      MAIN_THREAD image_MPI = (unsigned long long int*) malloc(image_bytes);
+      MAIN_THREAD if (image_MPI==NULL)
       {
         printf("\n\n   !!malloc ERROR!! Problem allocating the total MPI image. Out of memory??\n\n");  
         exit(-4);
@@ -1133,7 +1133,7 @@ int main(int argc, char **argv)
       
       fflush(stdout);      
       
-      MASTER_THREAD clock_start = clock();
+      MAIN_THREAD clock_start = clock();
                       
       // -- Sum the pixel values from the different simulated images and send to thread 0.
       //    MPI_Reduce will act as a synchronization barrier for all the MPI threads.
@@ -1145,14 +1145,14 @@ int main(int argc, char **argv)
         printf("\n\n !!ERROR!! Possible error reducing (MPI_SUM) the image results??? Returned value MPI_Reduce = %d\n\n\n", return_reduce);
       }
               
-      // -- Exchange the image simulated in thread 0 for the final image from all threads, in the master thread:
-      MASTER_THREAD 
+      // -- Exchange the image simulated in thread 0 for the final image from all threads, in the main thread:
+      MAIN_THREAD 
       {
         free(image);
         image = image_MPI;    // point the image pointer to the new image in host memory
         image_MPI = NULL;                
 
-        printf("\n       -- Time reducing the images simulated by all the MPI threads (MPI_Reduce) according to the master thread = %.6f s.\n", ((double)(clock()-clock_start))/CLOCKS_PER_SEC); 
+        printf("\n       -- Time reducing the images simulated by all the MPI threads (MPI_Reduce) according to the main thread = %.6f s.\n", ((double)(clock()-clock_start))/CLOCKS_PER_SEC); 
       }
     }
 #endif
@@ -1170,19 +1170,19 @@ int main(int argc, char **argv)
 
     if (num_p>0)
     {     
-      MASTER_THREAD report_image(file_name_output_num_p, detector_data, source_data, mean_energy_spectrum, image, time_elapsed_MC_loop, total_histories, num_p, num_projections, myID, numprocs, current_angle, &seed_input);
+      MAIN_THREAD report_image(file_name_output_num_p, detector_data, source_data, mean_energy_spectrum, image, time_elapsed_MC_loop, total_histories, num_p, num_projections, myID, numprocs, current_angle, &seed_input);
     }
     else
     {
       // Projection 0 happens only when num_projections==1 or when flag_simulateMammoAfterDBT==true:
-      MASTER_THREAD report_image(file_name_output_num_p, detector_data, source_data, mean_energy_spectrum, image, time_elapsed_MC_loop, total_histories, 0, 1, myID, numprocs, current_angle, &seed_input);
+      MAIN_THREAD report_image(file_name_output_num_p, detector_data, source_data, mean_energy_spectrum, image, time_elapsed_MC_loop, total_histories, 0, 1, myID, numprocs, current_angle, &seed_input);
     }
 
     // *** Clear the image after reporting, unless this is the last projection to simulate:
     if (num_p<num_projections)
     {
       int pixels_per_image = detector_data[0].num_pixels.x * detector_data[0].num_pixels.y;
-        MASTER_THREAD printf("       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = %d, threads per block = 128\n", (int)(ceil(pixels_per_image/128.0f)+0.01f) );
+        MAIN_THREAD printf("       ==> CUDA: Launching kernel to reset the device image to 0: number of blocks = %d, threads per block = 128\n", (int)(ceil(pixels_per_image/128.0f)+0.01f) );
         init_image_array_GPU<<<(int)(ceil(pixels_per_image/128.0f)+0.01f),128>>>(image_device, pixels_per_image);
         fflush(stdout);
         cudaDeviceSynchronize();
@@ -1194,7 +1194,7 @@ int main(int argc, char **argv)
     if (num_p==0 && flag_material_dose==1 && flag_simulateMammoAfterDBT)       // !!DBTv1.4!!
     {  
       // --Report "tally_materials_dose" for the first projection corresponding to a mammo acquisition, and reset dose counter. The dose for the DBT scan only will be reported at the end:   !!mammo-DBT!!
-      MASTER_THREAD printf("\n\n !!DBT Reporting \"tally_materials_dose\" for the first 0 deg projection, and reseting material and voxel dose counters.\n");
+      MAIN_THREAD printf("\n\n !!DBT Reporting \"tally_materials_dose\" for the first 0 deg projection, and reseting material and voxel dose counters.\n");
       checkCudaErrors( cudaMemcpy( materials_dose, materials_dose_device, MAX_MATERIALS*sizeof(ulonglong2), cudaMemcpyDeviceToHost) );  // Copy materials dose results to host
       #ifdef USING_MPI
         ulonglong2 materials_dose_total[MAX_MATERIALS];
@@ -1202,7 +1202,7 @@ int main(int argc, char **argv)
       #else
         ulonglong2 *materials_dose_total = materials_dose;  // Create a dummy pointer to the materials_dose data 
       #endif
-      MASTER_THREAD report_materials_dose(1, total_histories, density_nominal, materials_dose_total, mass_materials, file_name_materials);    // Report the material dose for the mammo image only  !!tally_materials_dose!!
+      MAIN_THREAD report_materials_dose(1, total_histories, density_nominal, materials_dose_total, mass_materials, file_name_materials);    // Report the material dose for the mammo image only  !!tally_materials_dose!!
       
       int kk;
       for(kk=0;kk<MAX_MATERIALS;kk++)   // Reset dose in CPU and GPU memory
@@ -1231,11 +1231,11 @@ int main(int argc, char **argv)
 
   if (dose_ROI_x_max > -1)
   {   
-    MASTER_THREAD clock_kernel = clock();    
+    MAIN_THREAD clock_kernel = clock();    
 
     checkCudaErrors( cudaMemcpy( voxels_Edep, voxels_Edep_device, voxels_Edep_bytes, cudaMemcpyDeviceToHost) );  // Copy final dose results to host (for every MPI threads)
 
-    MASTER_THREAD printf("       ==> CUDA: Time copying dose results from device to host: %.6f s\n", float(clock()-clock_kernel)/CLOCKS_PER_SEC);
+    MAIN_THREAD printf("       ==> CUDA: Time copying dose results from device to host: %.6f s\n", float(clock()-clock_kernel)/CLOCKS_PER_SEC);
   }
   
   if (flag_material_dose==1)
@@ -1252,7 +1252,7 @@ int main(int argc, char **argv)
   cudaFree(voxels_Edep_device);
   checkCudaErrors(cudaDeviceReset());
 
-  MASTER_THREAD printf("       ==> CUDA: Time freeing the device memory and ending the GPU threads: %.6f s\n", float(clock()-clock_kernel)/CLOCKS_PER_SEC);
+  MAIN_THREAD printf("       ==> CUDA: Time freeing the device memory and ending the GPU threads: %.6f s\n", float(clock()-clock_kernel)/CLOCKS_PER_SEC);
 
 
 #ifdef USING_MPI
@@ -1266,7 +1266,7 @@ int main(int argc, char **argv)
   
   // *** Report the total dose for all the projections, if the tally is not disabled (must be done after MPI_Barrier to have all the MPI threads synchronized):
 
-  MASTER_THREAD clock_start = clock();
+  MAIN_THREAD clock_start = clock();
   
   if (dose_ROI_x_max > -1)
   {  
@@ -1284,7 +1284,7 @@ int main(int argc, char **argv)
       }
       else
       {
-        MASTER_THREAD
+        MAIN_THREAD
         {
           printf("\n        >> Array for the total deposited dose correctly allocated by the MPI root node (%f Mbytes).\n", voxels_Edep_bytes/(1024.f*1024.f));
           printf(  "           Waiting at MPI_Barrier for thread synchronization.\n");
@@ -1292,7 +1292,7 @@ int main(int argc, char **argv)
       }      
       
       
-      MASTER_THREAD printf("\n        >> Calling MPI_Reduce to accumulate the dose from all projections...\n\n");    
+      MAIN_THREAD printf("\n        >> Calling MPI_Reduce to accumulate the dose from all projections...\n\n");    
       
       return_reduce = MPI_Reduce(voxels_Edep, voxels_Edep_total, 2*num_voxels_ROI, MPI_UNSIGNED_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);   // Sum all the doses in "voxels_Edep_total" at thread 0.
             // I am sending a "ulonglong2" array as if it was composed of 2 "ulonglong" variables per element. There could be problems if the alignment in the structure includes some extra padding space (but it seems ok for a 64-bit computer).
@@ -1302,7 +1302,7 @@ int main(int argc, char **argv)
       }
 
       // -- Exchange the dose simulated in thread 0 for the final dose from all threads  
-      MASTER_THREAD
+      MAIN_THREAD
       {
         free(voxels_Edep);
         voxels_Edep = voxels_Edep_total;    // point the voxels_Edep pointer to the final voxels_Edep array in host memory
@@ -1312,7 +1312,7 @@ int main(int argc, char **argv)
     #endif
 
     // -- Report the total dose for all the projections:
-    MASTER_THREAD report_voxels_dose(file_dose_output, num_projections, &voxel_data, voxel_mat_dens, voxels_Edep, time_total_MC_simulation, total_histories, dose_ROI_x_min, dose_ROI_x_max, dose_ROI_y_min, dose_ROI_y_max, dose_ROI_z_min, dose_ROI_z_max, source_data);
+    MAIN_THREAD report_voxels_dose(file_dose_output, num_projections, &voxel_data, voxel_mat_dens, voxels_Edep, time_total_MC_simulation, total_histories, dose_ROI_x_min, dose_ROI_x_max, dose_ROI_y_min, dose_ROI_y_max, dose_ROI_z_min, dose_ROI_z_max, source_data);
   }
   
   
@@ -1327,21 +1327,21 @@ int main(int argc, char **argv)
     ulonglong2 *materials_dose_total = materials_dose;  // Create a dummy pointer to the materials_dose data 
   #endif
     
-    MASTER_THREAD report_materials_dose(num_projections, total_histories, density_nominal, materials_dose_total, mass_materials, file_name_materials);    // Report the material dose  !!tally_materials_dose!!
+    MAIN_THREAD report_materials_dose(num_projections, total_histories, density_nominal, materials_dose_total, mass_materials, file_name_materials);    // Report the material dose  !!tally_materials_dose!!
 
   }
   
-  MASTER_THREAD clock_end = clock();
-  MASTER_THREAD printf("\n\n       ==> CUDA: Time reporting the dose data: %.6f s\n", ((double)(clock_end-clock_start))/CLOCKS_PER_SEC);
+  MAIN_THREAD clock_end = clock();
+  MAIN_THREAD printf("\n\n       ==> CUDA: Time reporting the dose data: %.6f s\n", ((double)(clock_end-clock_start))/CLOCKS_PER_SEC);
   
 
   // *** Clean up RAM memory. If CUDA was used, the geometry and table data were already cleaned for MPI threads other than root after copying data to the GPU:
   free(voxels_Edep);
   free(image);
   
-  MASTER_THREAD free(voxel_mat_dens);
+  MAIN_THREAD free(voxel_mat_dens);
 
-  MASTER_THREAD 
+  MAIN_THREAD 
   {
     printf("\n\n\n    -- SIMULATION FINISHED!\n");
     
@@ -1419,7 +1419,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   else if (argc>2)
   {
     
-    MASTER_THREAD printf("\n\n   !!read_input ERROR!! Too many input parameter (argc=%d)!! Provide only the input file name.\n\n", argc);    
+    MAIN_THREAD printf("\n\n   !!read_input ERROR!! Too many input parameter (argc=%d)!! Provide only the input file name.\n\n", argc);    
     // Finalizing MPI because all threads will detect the same problem and fail together.
     #ifdef USING_MPI
       MPI_Finalize();
@@ -1428,14 +1428,14 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   }
   else
   {
-    MASTER_THREAD printf("\n\n   !!read_input ERROR!! Input file name not given as an execution parameter!! Try again...\n\n");
+    MAIN_THREAD printf("\n\n   !!read_input ERROR!! Input file name not given as an execution parameter!! Try again...\n\n");
     #ifdef USING_MPI
       MPI_Finalize();
     #endif
     exit(-1);
   }
 
-  MASTER_THREAD printf("\n    -- Reading the input file \'%s\':\n", argv[1]);
+  MAIN_THREAD printf("\n    -- Reading the input file \'%s\':\n", argv[1]);
 
 
   /////////////////////////////////////////////////////////////////////////////
@@ -1463,7 +1463,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     
   if ((*num_threads_per_block%32)!=0)
   {
-    MASTER_THREAD printf("\n\n   !!read_input ERROR!! The input number of GPU threads per CUDA block must be a multiple of 32 (warp size). Input value: %d !!\n\n", *num_threads_per_block);
+    MAIN_THREAD printf("\n\n   !!read_input ERROR!! The input number of GPU threads per CUDA block must be a multiple of 32 (warp size). Input value: %d !!\n\n", *num_threads_per_block);
     #ifdef USING_MPI
       MPI_Finalize();
     #endif
@@ -1507,8 +1507,8 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
 
   if (0.5*theta_aperture > 180.0)
   {
-    MASTER_THREAD printf("\n\n   !!read_input ERROR!! Input polar semi-aperture must be in [0,180] deg.!\n");
-    MASTER_THREAD printf("                       0.5*theta_aperture = %lf, 0.5*phi_aperture = %lf\n", 0.5*theta_aperture, 0.5*phi_aperture);
+    MAIN_THREAD printf("\n\n   !!read_input ERROR!! Input polar semi-aperture must be in [0,180] deg.!\n");
+    MAIN_THREAD printf("                       0.5*theta_aperture = %lf, 0.5*phi_aperture = %lf\n", 0.5*theta_aperture, 0.5*phi_aperture);
     #ifdef USING_MPI
       MPI_Finalize();
     #endif
@@ -1516,8 +1516,8 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   }
   if (0.5*phi_aperture > 360.0)
   {
-    MASTER_THREAD printf("\n\n   !!read_input ERROR!! Input azimuthal semi-aperture must be in [0,360] deg.!\n");
-    MASTER_THREAD printf("                       0.5*theta_aperture = %lf, 0.5*phi_aperture = %lf\n", 0.5*theta_aperture, 0.5*phi_aperture);
+    MAIN_THREAD printf("\n\n   !!read_input ERROR!! Input azimuthal semi-aperture must be in [0,360] deg.!\n");
+    MAIN_THREAD printf("                       0.5*theta_aperture = %lf, 0.5*phi_aperture = %lf\n", 0.5*theta_aperture, 0.5*phi_aperture);
     #ifdef USING_MPI
       MPI_Finalize();
     #endif    
@@ -1539,7 +1539,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     create_rotation_matrix_around_axis(rotZ3*DEG2RAD, 0, 0, 1, source_data[0].rot_fan);  // 3rd rotation around Z               !!DBTv1.4!! 
     
   
-    MASTER_THREAD printf("       Input Euler angles to rotate the source from (0,1,0) to the input direction [deg]: rotZ1=%f , rotY2=%f , rotZ3=%f\n", rotZ1, rotY2, rotZ3); // !!DBTv1.4!! !!VERBOSE!!
+    MAIN_THREAD printf("       Input Euler angles to rotate the source from (0,1,0) to the input direction [deg]: rotZ1=%f , rotY2=%f , rotZ3=%f\n", rotZ1, rotY2, rotZ3); // !!DBTv1.4!! !!VERBOSE!!
         // printf("\n                               [%f %f %f]\n",source_data[0].rot_fan[0],source_data[0].rot_fan[1],source_data[0].rot_fan[2]);
         // printf(  "  Rotation matrix: Rodrigues = |%f %f %f|\n",source_data[0].rot_fan[3],source_data[0].rot_fan[4],source_data[0].rot_fan[5]);                              // !!DBTv1.4!! !!VERBOSE!!
         // printf(  "                               [%f %f %f]\n\n",source_data[0].rot_fan[6],source_data[0].rot_fan[7],source_data[0].rot_fan[8]); 
@@ -1553,7 +1553,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     
     if ( fabsf(default_direction.x-source_data[0].direction.x)>1e-5f || fabsf(default_direction.y-source_data[0].direction.y)>1e-5f || fabsf(default_direction.z-source_data[0].direction.z)>1e-5f )
     {
-      MASTER_THREAD 
+      MAIN_THREAD 
       {
         printf("\n\n!!WARNING!! The input Euler rotation angles for the source are incorrect!!!!!\n");       // !!DBTv1.4!!
         printf(  "            The Euler angles are defined as a rotation around Z axis, then Y, then Z again; positive rotations are counter-clock (eg, to move the detector from Y=0 to Z=0, input: 90.0, -90.0, 180.0).\n");
@@ -1578,12 +1578,12 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);    // COLLIMATE BEAM TOWARDS POSITIVE X ANGLES ONLY? (ie, cone-beam center aligned with chest wall in mammography) [YES/NO]
   if (0==strncmp("YE",new_line,2) || 0==strncmp("Ye",new_line,2) || 0==strncmp("ye",new_line,2))
     source_data[0].flag_halfConeX = true;
-    // MASTER_THREAD printf("       \'flag_halfConeX = true\': sampling only upper half beam for mammo geometry; beam centered at image edge.\n");   // !!DBT!!  !!HalfBeam!! !!DBTv1.4!!
+    // MAIN_THREAD printf("       \'flag_halfConeX = true\': sampling only upper half beam for mammo geometry; beam centered at image edge.\n");   // !!DBT!!  !!HalfBeam!! !!DBTv1.4!!
   else if (0==strncmp("NO",new_line,2) || 0==strncmp("No",new_line,2) || 0==strncmp("no",new_line,2))
     source_data[0].flag_halfConeX = false;
   else
   {
-    MASTER_THREAD printf("\n\n   !!read_input ERROR!! Answer YES or NO in the beam collimation question in \'SECTION SOURCE\'.\n                        Input text: %s\n\n",new_line);
+    MAIN_THREAD printf("\n\n   !!read_input ERROR!! Answer YES or NO in the beam collimation question in \'SECTION SOURCE\'.\n                        Input text: %s\n\n",new_line);
     #ifdef USING_MPI
       MPI_Finalize();
     #endif
@@ -1615,7 +1615,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
 
     if (detector_data[0].total_num_pixels < 1 || detector_data[0].total_num_pixels > 99999999 )
     {
-      MASTER_THREAD printf("\n\n   !!read_input ERROR!! The input number of pixels is incorrect. Input: X_pix = %d, Y_pix = %d, total_num_pix = %d!!\n\n", detector_data[0].num_pixels.x, detector_data[0].num_pixels.y, detector_data[0].total_num_pixels);
+      MAIN_THREAD printf("\n\n   !!read_input ERROR!! The input number of pixels is incorrect. Input: X_pix = %d, Y_pix = %d, total_num_pix = %d!!\n\n", detector_data[0].num_pixels.x, detector_data[0].num_pixels.y, detector_data[0].total_num_pixels);
       #ifdef USING_MPI
         MPI_Finalize();
       #endif      
@@ -1633,7 +1633,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
 
   if ((detector_data[0].sdd)<1.0e-6)
   {
-    MASTER_THREAD printf("\n\n   !!read_input ERROR!! The source-to-detector distance must be positive. Input: sdd=%f!!\n\n", detector_data[0].sdd);
+    MAIN_THREAD printf("\n\n   !!read_input ERROR!! The source-to-detector distance must be positive. Input: sdd=%f!!\n\n", detector_data[0].sdd);
     #ifdef USING_MPI
       MPI_Finalize();
     #endif      
@@ -1663,7 +1663,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
 
   if (detector_data[0].gain_W<0.001f || Swank_factor<0.001f)
   {
-    MASTER_THREAD printf("\n   !!read_input!! Negative gain or Swank factor input: reporting pixel values as energy fluence, disabling conversion to detected charges and electronic noise.\n\n");
+    MAIN_THREAD printf("\n   !!read_input!! Negative gain or Swank factor input: reporting pixel values as energy fluence, disabling conversion to detected charges and electronic noise.\n\n");
     detector_data[0].gain_W = 0.0f;
     detector_data[0].Swank_rel_std = 0.0f;
     detector_data[0].electronic_noise = 0.0f;
@@ -1702,7 +1702,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   {
     if (detector_data[0].grid_freq>0.0f)
     {
-      MASTER_THREAD printf("\n\n   !!read_input ERROR!! Incorrect grid orientation value: input 0 for strips perpendicular to image width (lateral direction) as in mammography, or 1 for strips parallel to image widtht. Input: orientation=%d!!\n\n", grid_orientation);
+      MAIN_THREAD printf("\n\n   !!read_input ERROR!! Incorrect grid orientation value: input 0 for strips perpendicular to image width (lateral direction) as in mammography, or 1 for strips parallel to image widtht. Input: orientation=%d!!\n\n", grid_orientation);
       #ifdef USING_MPI
         MPI_Finalize();
       #endif      
@@ -1775,8 +1775,8 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
 
   if ( fabs(*num_projections) > MAX_NUM_PROJECTIONS )
   {
-    MASTER_THREAD printf("\n\n   !!read_input ERROR!! The input number of projections is too large. Increase parameter MAX_NUM_PROJECTIONS=%d in the header file and recompile.\n", MAX_NUM_PROJECTIONS);
-    MASTER_THREAD printf(    "                        There is no limit in the number of projections to be simulated because the source, detector data for each projection is stored in global memory and transfered to shared memory for each projection.\n\n");
+    MAIN_THREAD printf("\n\n   !!read_input ERROR!! The input number of projections is too large. Increase parameter MAX_NUM_PROJECTIONS=%d in the header file and recompile.\n", MAX_NUM_PROJECTIONS);
+    MAIN_THREAD printf(    "                        There is no limit in the number of projections to be simulated because the source, detector data for each projection is stored in global memory and transfered to shared memory for each projection.\n\n");
     #ifdef USING_MPI
       MPI_Finalize();
     #endif    
@@ -1799,7 +1799,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     sscanf(new_line, "%lf", SRotAxisD);   // SOURCE-TO-ROTATION AXIS DISTANCE
     if (*SRotAxisD<0.0 || *SRotAxisD>detector_data[0].sdd)
     {
-      MASTER_THREAD printf("\n\n   !!read_input ERROR!! Invalid source-to-rotation axis distance! Input: %f (sdd=%f).\n\n\n", *SRotAxisD, detector_data[0].sdd);
+      MAIN_THREAD printf("\n\n   !!read_input ERROR!! Invalid source-to-rotation axis distance! Input: %f (sdd=%f).\n\n\n", *SRotAxisD, detector_data[0].sdd);
       #ifdef USING_MPI
         MPI_Finalize();
       #endif      
@@ -1841,7 +1841,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
       *flag_detectorFixed = false;
     else
     {
-      MASTER_THREAD printf("\n\n   !!read_input ERROR!! Answer YES or NO to KEEP DETECTOR FIXED AT 0 DEGREES FOR DBT.\n                        Input text: %s\n\n",new_line);
+      MAIN_THREAD printf("\n\n   !!read_input ERROR!! Answer YES or NO to KEEP DETECTOR FIXED AT 0 DEGREES FOR DBT.\n                        Input text: %s\n\n",new_line);
       #ifdef USING_MPI
         MPI_Finalize();
       #endif
@@ -1856,7 +1856,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
       *flag_simulateMammoAfterDBT = false;
     else
     {
-      MASTER_THREAD printf("\n\n   !!read_input ERROR!! Answer YES or NO to SIMULATE BOTH FIRST PROJECTION AND TOMOGRAPHIC SCAN (WITHOUT GRID) WITH SAME NUM HIST (eg, DBT+mammo).\n                        Input text: %s\n\n",new_line);
+      MAIN_THREAD printf("\n\n   !!read_input ERROR!! Answer YES or NO to SIMULATE BOTH FIRST PROJECTION AND TOMOGRAPHIC SCAN (WITHOUT GRID) WITH SAME NUM HIST (eg, DBT+mammo).\n                        Input text: %s\n\n",new_line);
       #ifdef USING_MPI
         MPI_Finalize();
       #endif
@@ -1885,7 +1885,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     
     if (strstr(new_line,"SECTION DOSE DEPOSITION v.2011-02-18")!=NULL)  // Detect previous version of input file
     {
-      MASTER_THREAD printf("\n\n   !!read_input ERROR!! Please update the input file to the new version of MC-GPU (v1.3)!!\n\n    You simply have to change the input file text line:\n         [SECTION DOSE DEPOSITION v.2011-02-18]\n\n    for these two lines:\n         [SECTION DOSE DEPOSITION v.2012-12-12]\n         NO                              # TALLY MATERIAL DOSE? [YES/NO]\n\n");
+      MAIN_THREAD printf("\n\n   !!read_input ERROR!! Please update the input file to the new version of MC-GPU (v1.3)!!\n\n    You simply have to change the input file text line:\n         [SECTION DOSE DEPOSITION v.2011-02-18]\n\n    for these two lines:\n         [SECTION DOSE DEPOSITION v.2012-12-12]\n         NO                              # TALLY MATERIAL DOSE? [YES/NO]\n\n");
       exit(-2);
     }
     
@@ -1897,16 +1897,16 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   if (0==strncmp("YE",new_line,2) || 0==strncmp("Ye",new_line,2) || 0==strncmp("ye",new_line,2))
   {
     *flag_material_dose = 1;
-    MASTER_THREAD printf("       Material dose deposition tally ENABLED.\n");
+    MAIN_THREAD printf("       Material dose deposition tally ENABLED.\n");
   }
   else if (0==strncmp("NO",new_line,2) || 0==strncmp("No",new_line,2) || 0==strncmp("no",new_line,2))
   {
     *flag_material_dose = 0;  // -- NO: disabling tally
-    MASTER_THREAD printf("       Material dose deposition tally DISABLED.\n");    
+    MAIN_THREAD printf("       Material dose deposition tally DISABLED.\n");    
   }
   else
   {
-    MASTER_THREAD printf("\n\n   !!read_input ERROR!! Answer YES or NO in the first two line of \'SECTION DOSE DEPOSITION\' to enable or disable the material dose and 3D voxel dose tallies.\n                        Input text: %s\n\n",new_line);
+    MAIN_THREAD printf("\n\n   !!read_input ERROR!! Answer YES or NO in the first two line of \'SECTION DOSE DEPOSITION\' to enable or disable the material dose and 3D voxel dose tallies.\n                        Input text: %s\n\n",new_line);
     #ifdef USING_MPI
       MPI_Finalize();
     #endif
@@ -1927,12 +1927,12 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     *dose_ROI_y_min -= 1; *dose_ROI_y_max -= 1;
     *dose_ROI_z_min -= 1; *dose_ROI_z_max -= 1;
 
-    MASTER_THREAD printf("       3D voxel dose deposition tally ENABLED.\n");
+    MAIN_THREAD printf("       3D voxel dose deposition tally ENABLED.\n");
     if ( ((*dose_ROI_x_min)>(*dose_ROI_x_max)) || ((*dose_ROI_y_min)>(*dose_ROI_y_max)) || ((*dose_ROI_z_min)>(*dose_ROI_z_max)) ||
           (*dose_ROI_x_min)<0 || (*dose_ROI_y_min)<0 || (*dose_ROI_z_min)<0 )
     {
-      MASTER_THREAD printf("\n\n   !!read_input ERROR!! The input region-of-interst in \'SECTION DOSE DEPOSITION\' is not valid: the minimum voxel index may not be zero or larger than the maximum index.\n");
-      MASTER_THREAD printf(  "                          Input data = X[%d,%d], Y[%d,%d], Z[%d,%d]\n\n", *dose_ROI_x_min+1, *dose_ROI_x_max+1, *dose_ROI_y_min+1, *dose_ROI_y_max+1, *dose_ROI_z_min+1, *dose_ROI_z_max+1);  // Show ROI with index=1 for the first voxel instead of 0.
+      MAIN_THREAD printf("\n\n   !!read_input ERROR!! The input region-of-interst in \'SECTION DOSE DEPOSITION\' is not valid: the minimum voxel index may not be zero or larger than the maximum index.\n");
+      MAIN_THREAD printf(  "                          Input data = X[%d,%d], Y[%d,%d], Z[%d,%d]\n\n", *dose_ROI_x_min+1, *dose_ROI_x_max+1, *dose_ROI_y_min+1, *dose_ROI_y_max+1, *dose_ROI_z_min+1, *dose_ROI_z_max+1);  // Show ROI with index=1 for the first voxel instead of 0.
       #ifdef USING_MPI
         MPI_Finalize();
       #endif      
@@ -1940,27 +1940,27 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     }
     if ( ((*dose_ROI_x_min)==(*dose_ROI_x_max)) && ((*dose_ROI_y_min)==(*dose_ROI_y_max)) && ((*dose_ROI_z_min)==(*dose_ROI_z_max)) ) 
     {
-      MASTER_THREAD printf("\n\n   !!read_input!! According to the input region-of-interest in \'SECTION DOSE DEPOSITION\', only the dose in the voxel (%d,%d,%d) will be tallied.\n\n",*dose_ROI_x_min,*dose_ROI_y_min,*dose_ROI_z_min);
+      MAIN_THREAD printf("\n\n   !!read_input!! According to the input region-of-interest in \'SECTION DOSE DEPOSITION\', only the dose in the voxel (%d,%d,%d) will be tallied.\n\n",*dose_ROI_x_min,*dose_ROI_y_min,*dose_ROI_z_min);
     }
     
   }
   else if (0==strncmp("NO",new_line,2) || 0==strncmp("No",new_line,2) || 0==strncmp("no",new_line,2))
   {
     // -- NO: disabling tally
-    MASTER_THREAD printf("       3D voxel dose deposition tally DISABLED.\n");
+    MAIN_THREAD printf("       3D voxel dose deposition tally DISABLED.\n");
     *dose_ROI_x_min = (short int) 32500; *dose_ROI_x_max = (short int) -32500;   // Set absurd values for the ROI to make sure we never get any dose tallied
     *dose_ROI_y_min = (short int) 32500; *dose_ROI_y_max = (short int) -32500;   // (the maximum values for short int variables are +-32768)
     *dose_ROI_z_min = (short int) 32500; *dose_ROI_z_max = (short int) -32500;
   }
   else
   {
-      MASTER_THREAD printf("\n\n   !!read_input ERROR!! Answer YES or NO in the first two line of \'SECTION DOSE DEPOSITION\' to enable or disable the material dose and 3D voxel dose tallies.\n                        Input text: %s\n\n",new_line);
+      MAIN_THREAD printf("\n\n   !!read_input ERROR!! Answer YES or NO in the first two line of \'SECTION DOSE DEPOSITION\' to enable or disable the material dose and 3D voxel dose tallies.\n                        Input text: %s\n\n",new_line);
       #ifdef USING_MPI
         MPI_Finalize();
       #endif
       exit(-2);
   }
-  MASTER_THREAD printf("\n");
+  MAIN_THREAD printf("\n");
 
 
   /////////////////////////////////////////////////////////////////////////////
@@ -2082,21 +2082,21 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
           {
             voxelId[id]=i;    // Assign current material to item number id in voxel-to-material conversion table (valid id from 0 to 255; 1 byte).
             flag_voxelId++;   // Mark that at voxelId has been used.
-//             MASTER_THREAD printf("\tid=%d\n",id);
+//             MAIN_THREAD printf("\tid=%d\n",id);
           }
           else if (id<-1 || id>255)
           {
-            MASTER_THREAD printf("\n\n   !!read_input ERROR!! Input voxelID values must be between 0 and 255 (unsigned char)! Value read for material %d: %d\n\n",i,id);
+            MAIN_THREAD printf("\n\n   !!read_input ERROR!! Input voxelID values must be between 0 and 255 (unsigned char)! Value read for material %d: %d\n\n",i,id);
             exit(-2);
           }
 //           else
-//             MASTER_THREAD printf("\tNo voxelID given for this material.\n");
+//             MAIN_THREAD printf("\tNo voxelID given for this material.\n");
             
           pch = strtok (NULL, ",");   // Get following tokens after comma
         }
       }
 //       else
-//         MASTER_THREAD printf("\tNo voxelID given for this material.\n");
+//         MAIN_THREAD printf("\tNo voxelID given for this material.\n");
     
     }  
   }
@@ -2144,14 +2144,14 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   }
 
   // Report the input (or default) conversion table:
-  MASTER_THREAD printf("       Voxel value to Monte Carlo material number conversion table (material number corresponds to order in input file):\n");
+  MAIN_THREAD printf("       Voxel value to Monte Carlo material number conversion table (material number corresponds to order in input file):\n");
   for (i=0; i<256; i++)
   {
     if (voxelId[i]>=0)
-      MASTER_THREAD printf("\t\tvoxelId = %d  -->  Material = %d\n", i, voxelId[i]+1);
+      MAIN_THREAD printf("\t\tvoxelId = %d  -->  Material = %d\n", i, voxelId[i]+1);
   }
-  MASTER_THREAD printf("\n"); 
-  MASTER_THREAD fflush(stdout);  
+  MAIN_THREAD printf("\n"); 
+  MAIN_THREAD fflush(stdout);  
   
   
   // [Finish reading input file]
@@ -2179,7 +2179,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   create_rotation_matrix_around_axis(-rotY2*DEG2RAD, 0, 1, 0, detector_data[0].rot_inv);  // Inverse 2nd rotation around Y               !!DBTv1.4!!
   create_rotation_matrix_around_axis(-rotZ1*DEG2RAD, 0, 0, 1, detector_data[0].rot_inv);  // Inverse 1st rotation around Z               !!DBTv1.4!!
 
-  MASTER_THREAD printf("       Rotations from the detector plane to default detector plane at Y=0 [deg]: rotZ=%f , rotY=%f , rotZ=%f\n", -rotZ3, -rotY2, -rotZ1);
+  MAIN_THREAD printf("       Rotations from the detector plane to default detector plane at Y=0 [deg]: rotZ=%f , rotY=%f , rotZ=%f\n", -rotZ3, -rotY2, -rotZ1);
 
   /////////////////////////////////////////////////////////////////////////////
 
@@ -2194,7 +2194,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   }
   else
   {
-    MASTER_THREAD printf("       Array for 4 scatter images correctly allocated (%d pixels, %f Mbytes)\n", pixels_per_image, (*image_bytes)/(1024.f*1024.f));
+    MAIN_THREAD printf("       Array for 4 scatter images correctly allocated (%d pixels, %f Mbytes)\n", pixels_per_image, (*image_bytes)/(1024.f*1024.f));
   }
 
   // *** Initialize the images to 0 in the CPU. The CUDA code will init it to 0 in the GPU global memory later, using kernel "init_image_array_GPU".
@@ -2214,7 +2214,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     }
     else
     {
-      MASTER_THREAD printf("       Array for the deposited dose ROI (and uncertainty) correctly allocated (%d voxels, %f Mbytes)\n", num_voxels_ROI, (*voxels_Edep_bytes)/(1024.f*1024.f));
+      MAIN_THREAD printf("       Array for the deposited dose ROI (and uncertainty) correctly allocated (%d voxels, %f Mbytes)\n", num_voxels_ROI, (*voxels_Edep_bytes)/(1024.f*1024.f));
     }
   }
   else
@@ -2336,7 +2336,7 @@ void load_voxels(int myID, char* file_name_voxels, float* density_max, struct vo
   char new_line[250];
   char *new_line_ptr = NULL;  
       
-  MASTER_THREAD if (strstr(file_name_voxels,".zip")!=NULL)
+  MAIN_THREAD if (strstr(file_name_voxels,".zip")!=NULL)
     printf("\n\n    -- WARNING load_voxels! The input voxel file name has the extension \'.zip\'. Only \'.gz\' compression is allowed!!\n\n");     // !!zlib!!
     
   gzFile file_ptr = gzopen(file_name_voxels, "rb");  // Open the file with zlib: the file can be compressed with gzip or uncompressed.   !!zlib!!  
@@ -2346,7 +2346,7 @@ void load_voxels(int myID, char* file_name_voxels, float* density_max, struct vo
     printf("\n\n   !! fopen ERROR load_voxels!! File %s does not exist!!\n", file_name_voxels);
     exit(-2);
   }
-  MASTER_THREAD 
+  MAIN_THREAD 
   {
     printf("\n    -- Reading voxel file \'%s\':\n",file_name_voxels);
     if (strstr(file_name_voxels,".gz")==NULL)
@@ -2359,7 +2359,7 @@ void load_voxels(int myID, char* file_name_voxels, float* density_max, struct vo
     
     if (new_line_ptr==NULL)
     {
-      MASTER_THREAD printf("\n\n   !!Reading ERROR load_voxels!! File is not readable or does not contain the string \'[SECTION VOXELS HEADER\'!!\n");
+      MAIN_THREAD printf("\n\n   !!Reading ERROR load_voxels!! File is not readable or does not contain the string \'[SECTION VOXELS HEADER\'!!\n");
       exit(-2);
     }
   }
@@ -2374,7 +2374,7 @@ void load_voxels(int myID, char* file_name_voxels, float* density_max, struct vo
     new_line_ptr = gzgets(file_ptr, new_line, 250);   //  !!zlib!!
     if (new_line_ptr==NULL)
     {
-      MASTER_THREAD printf("\n\n   !!Reading ERROR load_voxels!! File is not readable or does not contain the string \'[END OF VXH SECTION]\'!!\n");
+      MAIN_THREAD printf("\n\n   !!Reading ERROR load_voxels!! File is not readable or does not contain the string \'[END OF VXH SECTION]\'!!\n");
       exit(-2);
     }
   }
@@ -2385,7 +2385,7 @@ void load_voxels(int myID, char* file_name_voxels, float* density_max, struct vo
   voxel_data->size_bbox.y = voxel_data->num_voxels.y * voxel_data->voxel_size.y;
   voxel_data->size_bbox.z = voxel_data->num_voxels.z * voxel_data->voxel_size.z;
   
-  MASTER_THREAD
+  MAIN_THREAD
   {
     printf("       Number of voxels in the input geometry file: %d x %d x %d =  %d\n", voxel_data->num_voxels.x, voxel_data->num_voxels.y, voxel_data->num_voxels.z, (voxel_data->num_voxels.x*voxel_data->num_voxels.y*voxel_data->num_voxels.z));
     printf("       Size of the input voxels: %f x %f x %f cm  (voxel volume=%f cm^3)\n", voxel_data->voxel_size.x, voxel_data->voxel_size.y, voxel_data->voxel_size.z, voxel_data->voxel_size.x*voxel_data->voxel_size.y*voxel_data->voxel_size.z);
@@ -2398,17 +2398,17 @@ void load_voxels(int myID, char* file_name_voxels, float* density_max, struct vo
     // -- Make sure the input number of voxels in the vox file is compatible with the input dose ROI (ROI assumes first voxel is index 0):
     if ( (*dose_ROI_x_max+1)>(voxel_data->num_voxels.x) || (*dose_ROI_y_max+1)>(voxel_data->num_voxels.y) || (*dose_ROI_z_max+1)>(voxel_data->num_voxels.z) )
     {
-      MASTER_THREAD printf("\n       The input region of interest for the dose deposition is larger than the size of the voxelized geometry:\n");
+      MAIN_THREAD printf("\n       The input region of interest for the dose deposition is larger than the size of the voxelized geometry:\n");
       *dose_ROI_x_max = min_value(voxel_data->num_voxels.x-1, *dose_ROI_x_max);
       *dose_ROI_y_max = min_value(voxel_data->num_voxels.y-1, *dose_ROI_y_max);
       *dose_ROI_z_max = min_value(voxel_data->num_voxels.z-1, *dose_ROI_z_max);
-      MASTER_THREAD printf(  "       updating the ROI max limits to fit the geometry -> dose_ROI_max=(%d, %d, %d)\n", *dose_ROI_x_max+1, *dose_ROI_y_max+1, *dose_ROI_z_max+1);         // Allowing the input of an ROI larger than the voxel volume: in this case some of the allocated memory will be wasted but the program will run ok.
+      MAIN_THREAD printf(  "       updating the ROI max limits to fit the geometry -> dose_ROI_max=(%d, %d, %d)\n", *dose_ROI_x_max+1, *dose_ROI_y_max+1, *dose_ROI_z_max+1);         // Allowing the input of an ROI larger than the voxel volume: in this case some of the allocated memory will be wasted but the program will run ok.
     }
     
     if ( (*dose_ROI_x_max+1)==(voxel_data->num_voxels.x) && (*dose_ROI_y_max+1)==(voxel_data->num_voxels.y) && (*dose_ROI_z_max+1)==(voxel_data->num_voxels.z) )
-      MASTER_THREAD printf("       The voxel dose tally ROI covers the entire voxelized phantom: the dose to every voxel will be tallied.\n");
+      MAIN_THREAD printf("       The voxel dose tally ROI covers the entire voxelized phantom: the dose to every voxel will be tallied.\n");
     else
-      MASTER_THREAD printf("       The voxel dose tally ROI covers only a fraction of the voxelized phantom: the dose to voxels outside the ROI will not be tallied.\n");
+      MAIN_THREAD printf("       The voxel dose tally ROI covers only a fraction of the voxelized phantom: the dose to voxels outside the ROI will not be tallied.\n");
   }
   
   // -- Store the inverse of the pixel sides (in cm) to speed up the particle location in voxels.
@@ -2428,13 +2428,13 @@ void load_voxels(int myID, char* file_name_voxels, float* density_max, struct vo
     exit(-2);
   }
 
-  MASTER_THREAD printf("\n\n!!WARNING!! The conversion table assigning a fixed density to each material (global memory array \"density_LUT\") has to be given in the input file or the hardcoded default from VICTRE is used.\n");
-  MASTER_THREAD printf(    "            The densities given in the ASCII input .vox file are not used in the actual simulation!\n\n");  //!!FixedDensity_DBT!!    
-  MASTER_THREAD printf("    -- Initializing the voxel material vector (%f Mbytes). \n\n", (*voxel_mat_dens_bytes)/(1024.f*1024.f));
-  MASTER_THREAD fflush(stdout);
+  MAIN_THREAD printf("\n\n!!WARNING!! The conversion table assigning a fixed density to each material (global memory array \"density_LUT\") has to be given in the input file or the hardcoded default from VICTRE is used.\n");
+  MAIN_THREAD printf(    "            The densities given in the ASCII input .vox file are not used in the actual simulation!\n\n");  //!!FixedDensity_DBT!!    
+  MAIN_THREAD printf("    -- Initializing the voxel material vector (%f Mbytes). \n\n", (*voxel_mat_dens_bytes)/(1024.f*1024.f));
+  MAIN_THREAD fflush(stdout);
   
   // -- Read the voxel densities:
-  //   MASTER_THREAD printf("       Reading the voxel densities... ");
+  //   MAIN_THREAD printf("       Reading the voxel densities... ");
   int i, j, k, read_lines=0, dummy_material, read_items = -99;
   float dummy_density;
 //   float2 *voxels_ptr = *voxel_mat_dens_ptr;
@@ -2492,7 +2492,7 @@ void load_voxels(int myID, char* file_name_voxels, float* density_max, struct vo
       }
     }
   }
-  MASTER_THREAD printf("       Total number of voxels read: %d\n",read_lines);
+  MAIN_THREAD printf("       Total number of voxels read: %d\n",read_lines);
   gzclose(file_ptr);     // Close input file    !!zlib!!
 }
 
@@ -2539,13 +2539,13 @@ void load_material(int myID, char file_name_materials[MAX_MATERIALS][250], float
     
 
   // --Read the material data files:
-  MASTER_THREAD printf("\n    -- Reading the material data files (MAX_MATERIALS=%d):\n", MAX_MATERIALS);
+  MAIN_THREAD printf("\n    -- Reading the material data files (MAX_MATERIALS=%d):\n", MAX_MATERIALS);
   for (mat=0; mat<MAX_MATERIALS; mat++)
   {
     if ((file_name_materials[mat][0]=='\0') || (file_name_materials[mat][0]=='\n'))  //  Empty file name
        continue;   // Re-start loop for next material
 
-    MASTER_THREAD printf("         Mat %d: File \'%s\'\n", mat+1, file_name_materials[mat]);
+    MAIN_THREAD printf("         Mat %d: File \'%s\'\n", mat+1, file_name_materials[mat]);
 //     printf("    -- Reading material file #%d: \'%s\'\n", mat, file_name_materials[mat]);
 
     gzFile file_ptr = gzopen(file_name_materials[mat], "rb");    // !!zlib!!  
@@ -2576,7 +2576,7 @@ void load_material(int myID, char file_name_materials[MAX_MATERIALS][250], float
       // Material density read from a text-based (no binary) input geometry:
       density_LUT[mat] = density_max[mat];
       
-      MASTER_THREAD printf("                Nominal density = %f g/cm^3; Density in voxels = %f g/cm^3\n", density_nominal[mat], density_max[mat]);
+      MAIN_THREAD printf("                Nominal density = %f g/cm^3; Density in voxels = %f g/cm^3\n", density_nominal[mat], density_max[mat]);
     }
     else if (density_max[mat]>-2.0f)    
     {
@@ -2588,11 +2588,11 @@ void load_material(int myID, char file_name_materials[MAX_MATERIALS][250], float
         
       density_max[mat] = density_LUT[mat];
       
-      MASTER_THREAD printf("                Nominal density = %f g/cm^3; Density used in voxels = %f g/cm^3\n", density_nominal[mat], density_max[mat]);
+      MAIN_THREAD printf("                Nominal density = %f g/cm^3; Density used in voxels = %f g/cm^3\n", density_nominal[mat], density_max[mat]);
     }
     else                       //  Material NOT found in the voxels
     {
-      MASTER_THREAD printf("                This material is not used in any voxel.\n");
+      MAIN_THREAD printf("                This material is not used in any voxel.\n");
       
       // Do not lose time reading the data for materials not found in the voxels, except for the first one (needed to determine the size of the input data).      
       if (0 == mat)
@@ -2609,7 +2609,7 @@ void load_material(int myID, char file_name_materials[MAX_MATERIALS][250], float
     if (0==mat)
     {
       mfp_table_data->num_values = input_num_values;
-      MASTER_THREAD printf("                Number of energy values in the mean free path database: %d.\n", input_num_values);
+      MAIN_THREAD printf("                Number of energy values in the mean free path database: %d.\n", input_num_values);
 
       // Allocate memory for the linear interpolation arrays:
       *mfp_Woodcock_table_bytes = sizeof(float2)*input_num_values;
@@ -2632,7 +2632,7 @@ void load_material(int myID, char file_name_materials[MAX_MATERIALS][250], float
       }
       else
       {
-        MASTER_THREAD printf("                Linear interpolation data correctly allocated (%f Mbytes)\n", (*mfp_Woodcock_table_bytes+2*(*mfp_table_bytes))/(1024.f*1024.f));
+        MAIN_THREAD printf("                Linear interpolation data correctly allocated (%f Mbytes)\n", (*mfp_Woodcock_table_bytes+2*(*mfp_table_bytes))/(1024.f*1024.f));
       }
       for (i=0; i<input_num_values; i++)
       {
@@ -2700,7 +2700,7 @@ void load_material(int myID, char file_name_materials[MAX_MATERIALS][250], float
       e_last = d_energy;
     }
     
-    if (0==mat) MASTER_THREAD printf("                Lowest energy first bin = %f eV, last bin = %f eV; bin width = %f eV\n", (mfp_table_data->e0), e_last, delta_e);
+    if (0==mat) MAIN_THREAD printf("                Lowest energy first bin = %f eV, last bin = %f eV; bin width = %f eV\n", (mfp_table_data->e0), e_last, delta_e);
 
     // -- Store the inverse of delta energy:
     mfp_table_data->ide = 1.0f/delta_e;
@@ -3004,7 +3004,7 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
   checkCudaErrors(cudaMemcpyToSymbol(density_LUT_CONST, &density_LUT, MAX_MATERIALS*sizeof(float)));   // !!inputDensity!! store density look-up table in GPU constant memory 
 
   double total_mem = sizeof(struct voxel_struct)+sizeof(struct source_struct)+sizeof(struct detector_struct)+sizeof(struct linear_interp) + 6*sizeof(short int) + MAX_MATERIALS*sizeof(float);
-  MASTER_THREAD printf("       ==> CUDA: Constant data successfully copied to the device. CONSTANT memory used: %lf kbytes (%.1lf%%)\n", total_mem/1024.0, 100.0*total_mem/deviceProp.totalConstMem);
+  MAIN_THREAD printf("       ==> CUDA: Constant data successfully copied to the device. CONSTANT memory used: %lf kbytes (%.1lf%%)\n", total_mem/1024.0, 100.0*total_mem/deviceProp.totalConstMem);
   
 
   // -- Allocate the device global memory:
@@ -3045,7 +3045,7 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
   }
   else
   {
-    MASTER_THREAD printf("       ==> CUDA: Device global memory correctly allocated. GLOBAL memory used: %lf Mbytes (%.1lf%%)\n", total_mem/(1024.0*1024.0), 100.0*total_mem/deviceProp.totalGlobalMem);
+    MAIN_THREAD printf("       ==> CUDA: Device global memory correctly allocated. GLOBAL memory used: %lf Mbytes (%.1lf%%)\n", total_mem/(1024.0*1024.0), 100.0*total_mem/deviceProp.totalGlobalMem);
   }
 
   // --Copy the host memory to the device:
@@ -3066,7 +3066,7 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
   //     Simple version: checkCudaErrors( cudaMemcpy( image_device, image, image_bytes, cudaMemcpyHostToDevice) );
 
   int pixels_per_image = detector_data[0].num_pixels.x * detector_data[0].num_pixels.y;
-  MASTER_THREAD printf("       ==> CUDA: Launching kernel to initialize the device image to 0: number of blocks = %d, threads per block = 128\n", (int)(ceil(pixels_per_image/128.0f)+0.01f) );
+  MAIN_THREAD printf("       ==> CUDA: Launching kernel to initialize the device image to 0: number of blocks = %d, threads per block = 128\n", (int)(ceil(pixels_per_image/128.0f)+0.01f) );
 
   init_image_array_GPU<<<(int)(ceil(pixels_per_image/128.0f)+0.01f),128>>>(*image_device, pixels_per_image);
     fflush(stdout);
@@ -3078,7 +3078,7 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
   if (*dose_ROI_x_max > -1)
   {      
     
-    MASTER_THREAD printf("       ==> CUDA: Initialize the device dose deposition to 0 using cudaMemcpy.\n");
+    MAIN_THREAD printf("       ==> CUDA: Initialize the device dose deposition to 0 using cudaMemcpy.\n");
     checkCudaErrors(cudaMemcpy(*voxels_Edep_device, voxels_Edep, voxels_Edep_bytes, cudaMemcpyHostToDevice) );
    
 /*  // -- OPTIONAL CODE: Launch kernel to initialize the device dose deposition to 0 (MAY FAIL IF DOSE MATRIX IS TOO BIG!)
@@ -3091,7 +3091,7 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
       num_blocks = (int)(ceil(((double)num_voxels_dose)/((double)num_threads_block))+0.001);
     }
     while (num_blocks > 65500);    
-    MASTER_THREAD printf("       ==> CUDA: Launching kernel to initialize the device dose deposition to 0: number of blocks = %d, threads per block = %d\n", num_blocks, num_threads_block);  
+    MAIN_THREAD printf("       ==> CUDA: Launching kernel to initialize the device dose deposition to 0: number of blocks = %d, threads per block = %d\n", num_blocks, num_threads_block);  
     init_dose_array_GPU<<<num_blocks,num_threads_block>>>(*voxels_Edep_device, num_voxels_dose);    
       cudaDeviceSynchronize();
       getLastCudaError("\n\n !!Kernel execution failed initializing the dose array!! ");  // Check if kernel execution generated any error:
@@ -3103,7 +3103,7 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
   if (flag_material_dose==1)
     checkCudaErrors(cudaMemcpy(*materials_dose_device, materials_dose, MAX_MATERIALS*sizeof(ulonglong2), cudaMemcpyHostToDevice));   // !!tally_materials_dose!!
     
-  MASTER_THREAD printf("                 Time spent allocating and copying memory to the device: %.6f s\n", float(clock()-clock_init)/CLOCKS_PER_SEC);    
+  MAIN_THREAD printf("                 Time spent allocating and copying memory to the device: %.6f s\n", float(clock()-clock_init)/CLOCKS_PER_SEC);    
 
 }
 
@@ -3820,7 +3820,7 @@ int report_materials_dose(int num_projections, unsigned long long int total_hist
 ///////////////////////////////////////////////////////////////////////////////
 void set_CT_trajectory(int myID, int num_projections, struct source_struct* source_data, struct detector_struct* detector_data, double translation_helical, bool flag_detectorFixed)  // !!DBTv1.4!! NEW VERSION with general rotations!!
 {
-  MASTER_THREAD 
+  MAIN_THREAD 
   {
     printf("\n    -- Setting the parameters of the sources and detectors for the %d tomographic projections (MAX_NUM_PROJECTIONS=%d):\n\n", num_projections, MAX_NUM_PROJECTIONS);
     
@@ -3883,9 +3883,9 @@ void set_CT_trajectory(int myID, int num_projections, struct source_struct* sour
       multiply_3x3(detector_data[i].rot_inv, detector_data[0].rot_inv, m);
     }
 
-    MASTER_THREAD printf("         << Projection #%d >>\t Angle=%.5f degrees\n", i, angle*RAD2DEG);
-    MASTER_THREAD printf("                             \t Source position=(%.8f,%.8f,%.8f), direction=(%.8f,%.8f,%.8f)\n", source_data[i].position.x,source_data[i].position.y,source_data[i].position.z, source_data[i].direction.x,source_data[i].direction.y,source_data[i].direction.z);
-    MASTER_THREAD printf("                             \t Detector center=(%.8f,%.8f,%.8f)\n", detector_data[i].center.x, detector_data[i].center.y, detector_data[i].center.z);
+    MAIN_THREAD printf("         << Projection #%d >>\t Angle=%.5f degrees\n", i, angle*RAD2DEG);
+    MAIN_THREAD printf("                             \t Source position=(%.8f,%.8f,%.8f), direction=(%.8f,%.8f,%.8f)\n", source_data[i].position.x,source_data[i].position.y,source_data[i].position.z, source_data[i].direction.x,source_data[i].direction.y,source_data[i].direction.z);
+    MAIN_THREAD printf("                             \t Detector center=(%.8f,%.8f,%.8f)\n", detector_data[i].center.x, detector_data[i].center.y, detector_data[i].center.z);
 
     if (detector_data[0].grid_freq>0.0f)
       detector_data[i].grid_freq = -detector_data[0].grid_freq;     // Disable grid after projection [0], if used        !!DBTv1.5!!
