@@ -16,7 +16,7 @@
 # 
 #                      @file    make_MC-GPU_v1.5b.sh
 #                      @author  Andreu Badal [Andreu.Badal-Soler{at}fda.hhs.gov]
-#                      @date    2018/01/01 
+#                      @date    2020/09/01 
 #   
 
 # -- Compile GPU code with MPI:
@@ -32,12 +32,12 @@ echo " "
 echo "    To run a simulation in 4 GPUs in parallel with openMPI in a single computer execute:"
 echo "      $ time mpirun -n 4 ./MC-GPU_v1.5b.x MC-GPU_v1.5b.in | tee MC-GPU_v1.5b.out"
 echo " "
-echo "    To run in multiple computers with MPI:"
-echo "      $ time mpirun --tag-output -v -x LD_LIBRARY_PATH -hostfile hostfile_gpunodes -n 20 /shared_folder_path/MC-GPU_v1.5b.x /shared_folder_path/MC-GPU_v1.5b.in | tee MC-GPU_v1.5b.out"
+echo "    To remove the undesirable openFabric warnings add the following mpirun option:  -mca btl tcp,sm,self" 
+echo "    To run threads in multiple computers, save the code in a shared drive and use the options:  -x LD_LIBRARY_PATH -hostfile my_hostfile"
 echo " "
 echo " "
 echo "    Running compilation command:"
-echo "nvcc MC-GPU_v1.5b.cu -o MC-GPU_v1.5b.x -m64 -O3 -use_fast_math -DUSING_MPI -I. -I/usr/local/cuda/include -I/usr/local/cuda/samples/common/inc -I/usr/local/cuda/samples/shared/inc/ -I/usr/include/openmpi -L/usr/lib/ -lmpi -lz --ptxas-options=-v -gencode=arch=compute_50,code=sm_50 -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_75,code=sm_75"
+echo "nvcc MC-GPU_v1.5b.cu -o MC-GPU_v1.5b.x -m64 -O3 -use_fast_math -DUSING_MPI -I. -I/usr/local/cuda/include -I/usr/local/cuda/samples/common/inc -I/usr/local/cuda/samples/shared/inc/ -I/usr/include/openmpi -L/usr/lib/ -lmpi -lz --ptxas-options=-v -gencode=arch=compute_50,code=sm_50 -gencode=arch=compute_61,code=sm_61"
 
 nvcc MC-GPU_v1.5b.cu -o MC-GPU_v1.5b.x -m64 -O3 -use_fast_math -DUSING_MPI -I. -I/usr/local/cuda/include -I/usr/local/cuda/samples/common/inc -I/usr/local/cuda/samples/shared/inc/ -I/usr/include/openmpi -L/usr/lib/ -lmpi -lz --ptxas-options=-v -gencode=arch=compute_50,code=sm_50 -gencode=arch=compute_61,code=sm_61
 # -gencode=arch=compute_75,code=sm_75
