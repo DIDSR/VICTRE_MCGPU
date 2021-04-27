@@ -1,3 +1,24 @@
+# LATEST NEWS!
+
+A peer-reviewed article describing the VICTRE_MCGPU software has been published.
+The article is open-access so that everybody can read and understand how the code works and its limitations. 
+We would appreciate it if you cite this work in your own publications using the software:
+
+ - _Andreu Badal, Diksha Sharma, Christian G.Graff, Rongping Zeng, and Aldo Badano, Mammography and breast tomosynthesis simulator for virtual clinical trials, 
+Computer Physics Communications 261, p. 107779 (2021)_
+https://doi.org/10.1016/j.cpc.2020.107779
+
+Another key publication describing the results of our VICTRE pivotal virtual imaging clinical trial was also published, and provides essential information to understand this software project:
+
+ - _Aldo Badano, Christian G. Graff, Andreu Badal, Diksha Sharma, Rongping Zeng, Frank W. Samuelson, Stephen J. Glick, Kyle J. Myers, 
+Evaluation of Digital Breast Tomosynthesis as Replacement of Full-Field Digital Mammography Using an In Silico Imaging Trial,
+JAMA Network Open 7, p. e185474 (2018)_
+https://doi:10.1001/jamanetworkopen.2018.5474
+
+For a simplified method to run this software and the rest of the VICTRE tools, check the Python class in this new repository from our group:
+https://github.com/DIDSR/VICTRE_PIPELINE
+
+
 # MC-GPU_v1.5b: VICTRE pivotal study simulations
 
 This version of MC-GPU was developed exclusively to replicate as realistically as possible a Siemens Mammomat Inspiration system for the Virtual Imaging Clinical Trial for Regulatory Evaluation (VICTRE) project.
@@ -11,7 +32,7 @@ Some of the improvements implemented in this version of MC-GPU compared to previ
 - Optional anti-scatter grid model.
 - Amorphous Selenium direct detector model: depth of interaction, fluorescence escape, charge generation, Swank factor, electronic noise.
 - Voxelized phantoms stored in memory usig a binary tree structure to save memory.
-- *Limitation: material densities hardcoded for Graff's phantom composition.*
+- Old version limitation: material densities hardcoded for Graff's phantom composition. *New version: new input file allows user-defined materials and densities.*
 
 ## Disclaimer
 
