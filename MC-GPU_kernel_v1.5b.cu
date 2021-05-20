@@ -37,7 +37,20 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
+// ** This software is described in the following reference (please cite it in yuor papers):
+//      Andreu Badal, Diksha Sharma, Christian G.Graff, Rongping Zeng, and Aldo Badano, Mammography and breast  
+//      tomosynthesis simulator for virtual clinical trials, Computer Physics Communications 261, p. 107779 (2021) 
+//      https://doi.org/10.1016/j.cpc.2020.107779
 
+
+// ** Update May 2021 **                                                                                !!BLOCKING_LAYER!!
+//   Enabling blocking (or dead) layers at the top and bottom of the detector slab.
+//   Interactions in these layers will not contribute to the pixel value, but their fluorescence will
+//   be tracked and might be detected somewhere else. The insensitive top layer causes a measurable
+//   drop in DQE(0), but it does not affect MTF as implemented. Pixel values will be reduced (less  
+//   energy detected per history. [Reference: Zhou et al., Med. Phys. 34, 1098-1109 (2007)]
+#define BLOCKING_LAYER_TOP    0.0008f  // [cm] = 8 micron. Thickness layer closer to source.            !!BLOCKING_LAYER!!
+#define BLOCKING_LAYER_BOTTOM 0.0008f  // [cm] = 8 micron. Thickness layer further from source.         !!BLOCKING_LAYER!!
 
 ////////////////////////////////////////////////////////////////////////////////
 //!  Initialize the image array, ie, set all pixels to zero
@@ -1495,10 +1508,14 @@ __device__ inline void tally_image(float* energy, float3* position, float3* dire
         }
       }
 
-      // -- Particle enters the detector! Tally the particle energy in the corresponding pixel (in tenths of meV):
+      // -- Particle enters the detector! Tally the particle energy in the corresponding pixel (in integer SCALE_eV fractions of eV):
       //    Using a CUDA atomic function (not available for global floats yet) to read and increase the pixel value in a single instruction, blocking interferences from other threads.
       //    The offset for the primaries or scatter images are calculated considering that:
       //      scatter_state=0 for non-scattered, =1 for Compton, =2 for Rayleigh, and =3 for multiple scatter.
+      
+      // - Do not count the energy deposited inside the top or bottom blocking (dead) layers of the detector (fluorescence still generated).  !!BLOCKING_LAYER!!
+      if ((position->y > BLOCKING_LAYER_BOTTOM) && (position->y < (detector_data_SHARED->scintillator_thickness-BLOCKING_LAYER_TOP)))      // !!BLOCKING_LAYER!!
+      
       atomicAdd(( image +                                                               // Pointer to beginning of image array
                 (int)(*scatter_state) * detector_data_SHARED->total_num_pixels +         // Offset to corresponding scatter image
                 (pixel_coord_x + pixel_coord_z*(detector_data_SHARED->num_pixels.x)) ),  // Offset to the corresponding pixel
@@ -1520,7 +1537,8 @@ __device__ inline void tally_image(float* energy, float3* position, float3* dire
         dist_detector = -detector_data_SHARED->fluorescence_MFP*logf(ranecu(seed));
         // -- Tally fluorescence energy in the corresponding pixel, unless escaped:        
         position->y = position->y + dist_detector*direction->y;
-        if ((position->y>0.0f) && (position->y<detector_data_SHARED->scintillator_thickness))
+        
+        if ((position->y > BLOCKING_LAYER_BOTTOM) && (position->y < (detector_data_SHARED->scintillator_thickness-BLOCKING_LAYER_TOP)))   // !!BLOCKING_LAYER!!
         {
           position->x = position->x + dist_detector*direction->x;
           pixel_coord_x = __float2int_rd((position->x - detector_data_SHARED->offset.x + 0.5f*detector_data_SHARED->width_X) * detector_data_SHARED->inv_pixel_size_X);  // CUDA intrinsic function converts float to integer rounding down (to minus inf)
