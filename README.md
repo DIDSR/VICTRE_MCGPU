@@ -1,4 +1,4 @@
-# LATEST NEWS!
+# LATEST NEWS
 
 A peer-reviewed article describing the VICTRE_MCGPU software has been published.
 The article is open-access so that everybody can read and understand how the code works and its limitations. 
@@ -17,6 +17,19 @@ https://doi:10.1001/jamanetworkopen.2018.5474
 
 For a simplified method to run this software and the rest of the VICTRE tools, check the Python class in this new repository from our group:
 https://github.com/DIDSR/VICTRE_PIPELINE
+
+
+# KNOWN AND NEW ISSUES
+
+Feel free to **report any bug, unexpected simulation results, or suggest new features by creating a new "Issue" in the Issues tab** above. Please provide your afiliation and details on the application you are simulating with the issue. Note that we do not have the resources to address all the requests. In particular, we might not be able to help with compilation errors in new versions of Ubuntu or other untested operating systems (but the program should eventually compile in any architecture with enough effort).
+
+We are happy to know how our software is being used. **Please send us an email** (or create an issue) **if you write an interesting article or dissertation using some of our tools.**
+
+We are aware of the following issues with the software (might be addressed in future versions):
+
+1. A faint vertical line might appear at the center of some very long simulations, or with very long source-to-detector distances. This seems to be caused by the finite resolution in sampling and storing the x-ray direction near 0 degrees with the GPU single precision arithmetic.
+    
+2. If the number of voxels in your phantom exceeds 2^31 (~2e9), please enable the BINARY TREE option in the input file to avoid overflow of the voxel pointer in the GPU, which produces a projection image with the phantom split in half.
 
 
 # MC-GPU_v1.5b: VICTRE pivotal study simulations
