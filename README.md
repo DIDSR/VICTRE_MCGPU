@@ -1,14 +1,17 @@
-# LATEST NEWS
+**MCGPU** is an open-source x-ray imaging simulation software intended to generate virtual x-ray projections of computational anatomical models described by voxels.
+This software was created, and is actively under development, at [FDA](https://www.fda.gov)/[CDRH](https://www.fda.gov/Medical-Devices)/[OSEL](https://www.fda.gov/about-fda/cdrh-offices/office-science-and-engineering-laboratories)/[DIDSR](https://www.fda.gov/about-fda/cdrh-offices/division-imaging-diagnostics-and-software-reliability). 
 
-A peer-reviewed article describing the VICTRE_MCGPU software has been published.
-The article is open-access so that everybody can read and understand how the code works and its limitations. 
-We would appreciate it if you cite this work in your own publications using the software:
+MCGPU can replicate any radiographic or computed tomography device (with different levels of realism depending on the device characteristics). 
+The latest update to the code, called VICTRE_MCGPU in this repository, enables the realistic replication of mammography systems and the acquisition of digital breast tomosynthesis (DBT) scans. The original version of the software is still available at https://github.com/DIDSR/MCGPU.
 
- - _Andreu Badal, Diksha Sharma, Christian G.Graff, Rongping Zeng, and Aldo Badano, Mammography and breast tomosynthesis simulator for virtual clinical trials, 
+
+A peer-reviewed, open-access article describing the VICTRE_MCGPU software has been published, and we would appreciate it if you cite this work in your own publications using the software:
+
+ - _Andreu Badal, Diksha Sharma, Christian G. Graff, Rongping Zeng, and Aldo Badano, Mammography and breast tomosynthesis simulator for virtual clinical trials, 
 Computer Physics Communications 261, p. 107779 (2021)_
 https://doi.org/10.1016/j.cpc.2020.107779
 
-Another key publication describing the results of our VICTRE pivotal virtual imaging clinical trial was also published, and provides essential information to understand this software project:
+A key publication describing the use of MCGPU in the VICTRE virtual imaging clinical trial is also available, and provides essential information to understand the purpose and capabilities of this software project:
 
  - _Aldo Badano, Christian G. Graff, Andreu Badal, Diksha Sharma, Rongping Zeng, Frank W. Samuelson, Stephen J. Glick, Kyle J. Myers, 
 Evaluation of Digital Breast Tomosynthesis as Replacement of Full-Field Digital Mammography Using an In Silico Imaging Trial,
@@ -19,22 +22,15 @@ For a simplified method to run this software and the rest of the VICTRE tools, c
 https://github.com/DIDSR/VICTRE_PIPELINE
 
 
-# KNOWN AND NEW ISSUES
 
-Feel free to **report any bug, unexpected simulation results, or suggest new features by creating a new "Issue" in the Issues tab** above. Please provide your afiliation and details on the application you are simulating with the issue. Note that we do not have the resources to address all the requests. In particular, we might not be able to help with compilation errors in new versions of Ubuntu or other untested operating systems (but the program should eventually compile in any architecture with enough effort).
+## Disclaimer
 
-We are happy to know how our software is being used. **Please send us an email** (or create an issue) **if you write an interesting article or dissertation using some of our tools.**
-
-We are aware of the following issues with the software (might be addressed in future versions):
-
-1. A faint vertical line might appear at the center of some very long simulations, or with very long source-to-detector distances. This seems to be caused by the finite resolution in sampling and storing the x-ray direction near 0 degrees with the GPU single precision arithmetic.
-    
-2. If the number of voxels in your phantom exceeds 2^31 (~2e9), please enable the BINARY TREE option in the input file to avoid overflow of the voxel pointer in the GPU, which produces a projection image with the phantom split in half.
+This software and documentation (the "Software") were developed at the Food and Drug Administration (FDA) by employees of the Federal Government in the course of their official duties. Pursuant to Title 17, Section 105 of the United States Code, this work is not subject to copyright protection and is in the public domain. Permission is hereby granted, free of charge, to any person obtaining a copy of the Software, to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, or sell copies of the Software or derivatives, and to permit persons to whom the Software is furnished to do so. FDA assumes no responsibility whatsoever for use by other parties of the Software, its source code, documentation or compiled executables, and makes no guarantees, expressed or implied, about its quality, reliability, or any other characteristic. Further, use of this code in no way implies endorsement by the FDA or confers any advantage in regulatory decisions. Although this software can be redistributed and/or modified freely, we ask that any derivative works bear some notice that they are derived from it, and any modified versions bear some notice that they have been modified.
 
 
 # MC-GPU_v1.5b: VICTRE pivotal study simulations
 
-This version of MC-GPU was developed exclusively to replicate as realistically as possible a Siemens Mammomat Inspiration system for the Virtual Imaging Clinical Trial for Regulatory Evaluation (VICTRE) project.
+The version of MC-GPU in this repository was developed  to replicate as realistically as possible a Siemens Mammomat Inspiration system for the Virtual Imaging Clinical Trial for Regulatory Evaluation (VICTRE) project.
 This code was used in the VICTRE pivotal study simulations executed in February 2018.
 
 The software is designed to simulate full-field digital mammography images and digital breast tomosynthesis (DBT) scans of the computational breast phantoms created by [Christian Graff's software](https://github.com/DIDSR/BreastPhantom).
@@ -47,14 +43,16 @@ Some of the improvements implemented in this version of MC-GPU compared to previ
 - Voxelized phantoms stored in memory usig a binary tree structure to save memory.
 - Old version limitation: material densities hardcoded for Graff's phantom composition. *New version: new input file allows user-defined materials and densities.*
 
-## Disclaimer
 
-This software and documentation (the "Software") were developed at the Food and Drug Administration (FDA) by employees of the Federal Government in the course of their official duties. Pursuant to Title 17, Section 105 of the United States Code, this work is not subject to copyright protection and is in the public domain. Permission is hereby granted, free of charge, to any person obtaining a copy of the Software, to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, or sell copies of the Software or derivatives, and to permit persons to whom the Software is furnished to do so. FDA assumes no responsibility whatsoever for use by other parties of the Software, its source code, documentation or compiled executables, and makes no guarantees, expressed or implied, about its quality, reliability, or any other characteristic. Further, use of this code in no way implies endorsement by the FDA or confers any advantage in regulatory decisions. Although this software can be redistributed and/or modified freely, we ask that any derivative works bear some notice that they are derived from it, and any modified versions bear some notice that they have been modified.
+## Compilation instructions
+The compilation of the MCGPU simulator can be easily accomplished by executing the provided Makefile.
+However, you might need to edit the script before compilation to provide the correct paths to the needed libraries in your operating system, and your target GPU compute capability.
+The only external dependencies of the software, in addition to a functioning version of the NVIDIA/CUDA SDK, are the openMPI and GZip libraries.
 
 
 ## [Example simulation](example_simulations/README.md)
 Simulation input files, and auxiliary files, have been added in the [example_simulations folder](https://github.com/DIDSR/VICTRE_MCGPU/tree/master/example_simulations) to allow the replication of two of the simulations of the VICTRE project.
-A breast phantom with scattered glandularity and a heterogreously dense phantom created with C. Graff model are provided (these phantoms were not part of the original VICTRE pivotal study, and have a single large mass embedded inside). The material files (generated from PENELOPE 2006 material files) and energy spectra used in the simulations are included.
+A breast phantom with scattered glandularity and a heterogeneously dense phantom created with C. Graff model are provided (these phantoms were not part of the original VICTRE pivotal study, and have a single large mass embedded inside). The material files (generated from PENELOPE 2006 material files) and energy spectra used in the simulations are included.
 
 <img src="example_simulations/results/mcgpu_image_22183101_scattered_0000_a.jpg" width="900px"/>
 
@@ -194,3 +192,14 @@ If no density and voxel id are input, the software automatically defaults to the
 THe new code is 100% compatible with the old input files, and the change has no effect on the simulation results.
 
 
+# KNOWN AND NEW ISSUES
+
+Feel free to **report any bug, unexpected simulation results, or suggest new features by creating a new "Issue" in the Issues tab** above. Please provide your affiliation and details on the application you are simulating with the issue. Note that we do not have the resources to address all the requests. In particular, we might not be able to help with compilation errors in new versions of Ubuntu or other untested operating systems (but the program should eventually compile in any architecture with enough effort).
+
+We are happy to know how our software is being used. **Please send us an email** (or create an issue) **if you write an interesting article or dissertation using some of our tools.**
+
+We are aware of the following issues with the software (might be addressed in future versions):
+
+1. A faint vertical line might appear at the center of some very long simulations, or with very long source-to-detector distances. This seems to be caused by the finite resolution in sampling and storing the x-ray direction near 0 degrees with the GPU single precision arithmetic.
+    
+2. If the number of voxels in your phantom exceeds 2^31 (~2e9), please enable the BINARY TREE option in the input file to avoid overflow of the voxel pointer in the GPU, which produces a projection image with the phantom split in half.
