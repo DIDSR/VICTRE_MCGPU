@@ -2887,7 +2887,51 @@ void init_CUDA_device( int* gpu_id, int myID, int numprocs,
       *gpu_id = *gpu_id + 1;  
       printf("             Skipping GPU %d in thread %d (%s), as selected in the input file: gpu_id=%d\n", gpu_id_to_avoid, myID, processor_name, *gpu_id); fflush(stdout);
     }
+
+    FILE *fp;
+    char line[1024];
+
+
+    bool active_gpus[255];
+    unsigned int cont = 0;
+    /* Read the output a line at a time - output it. */
+    bool found = true;
+    do{
+      fp = popen("nvidia-smi -q | grep Idle", "r");
+      if (fp == NULL) {
+        printf("Failed to check GPU status, fallback to sequential GPUs\n" );
+        break;
+      }
+      found = true;
+      cont = 0;
+      while (fgets(line, sizeof(line), fp) != NULL) {
+        if (strstr(line, "Not Active") != NULL) {
+          // contains
+          active_gpus[cont]=true;
+        }else{
+          active_gpus[cont]=false;
+        }
+        cont++;
+      }
+      /* close */
+      pclose(fp);
+
+      while(active_gpus[*gpu_id]){
+        *gpu_id = (*gpu_id)+1;
+        if ((*gpu_id)>cont){
+          printf("--- No more GPUs available... trying to add more load to previously selected GPUs...\n");
+          fflush(stdout);
+          sleep(20);
+          *gpu_id = 0;
+          found = false;
+          break;
+        }
+      }
+
+    }while(found == false);
     
+    printf("GPU SELECTED: %d\n",*gpu_id);
+    fflush(stdout);
   
   
     //!!MC-GPU_v1.4!! Skip GPUs connected to a monitor, if more GPUs available:
