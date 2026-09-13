@@ -1488,7 +1488,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   while(strstr(new_line,"SECTION SOURCE v.2016-12-02")==NULL);   // Skip comments and empty lines until the section begins
 
   new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);  // X-RAY ENERGY SPECTRUM FILE
-    trim_name(new_line, file_name_espc);
+    trim_name(new_line, file_name_espc, sizeof(file_name_espc));
     
   new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f %f %f", &source_data[0].position.x, &source_data[0].position.y, &source_data[0].position.z);   // SOURCE POSITION: X Y Z [cm]
@@ -1605,7 +1605,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   }
   while(strstr(new_line,"SECTION IMAGE DETECTOR v.2017-06-20")==NULL);   // Skip comments and empty lines until the section begins       !!DBTv1.5!!
   new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
-    trim_name(new_line, file_name_output);   // OUTPUT IMAGE FILE NAME (no spaces)
+    trim_name(new_line, file_name_output, sizeof(file_name_output));   // OUTPUT IMAGE FILE NAME (no spaces)
   new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     float dummy_num_pixels_x, dummy_num_pixels_y;  // Read input pixel number as float and truncated to integer
     sscanf(new_line, "%f %f", &dummy_num_pixels_x, &dummy_num_pixels_y);   // NUMBER OF PIXELS IN THE IMAGE: Nx Nz
@@ -1918,7 +1918,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   if (0==strncmp("YE",new_line,2) || 0==strncmp("Ye",new_line,2) || 0==strncmp("ye",new_line,2))
   {
     // -- YES: using the tally
-    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr); trim_name(new_line, file_dose_output);   // OUTPUT DOSE FILE NAME (no spaces)
+    new_line_ptr = fgets_trimmed(new_line, 400, file_ptr); trim_name(new_line, file_dose_output, sizeof(file_dose_output));   // OUTPUT DOSE FILE NAME (no spaces)
     new_line_ptr = fgets_trimmed(new_line, 400, file_ptr); sscanf(new_line, "%hd %hd", dose_ROI_x_min, dose_ROI_x_max);   // # VOXELS TO TALLY DOSE: X-index min max (first voxel has index 1)
     new_line_ptr = fgets_trimmed(new_line, 400, file_ptr); sscanf(new_line, "%hd %hd", dose_ROI_y_min, dose_ROI_y_max);   // # VOXELS TO TALLY DOSE: Y-index min max
     new_line_ptr = fgets_trimmed(new_line, 400, file_ptr); sscanf(new_line, "%hd %hd", dose_ROI_z_min, dose_ROI_z_max);   // # VOXELS TO TALLY DOSE: Z-index min max
@@ -1978,7 +1978,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
   }
   while(strstr(new_line,"SECTION VOXELIZED GEOMETRY FILE v.2017-07-26")==NULL);   // Skip comments and empty lines until the section begins
   new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
-    trim_name(new_line, file_name_voxels);   // VOXEL GEOMETRY FILE (penEasy 2008 format)
+    trim_name(new_line, file_name_voxels, sizeof(file_name_voxels));   // VOXEL GEOMETRY FILE (penEasy 2008 format)
     
   new_line_ptr = fgets_trimmed(new_line, 400, file_ptr);
     sscanf(new_line, "%f %f %f", &voxel_data->offset.x, &voxel_data->offset.y, &voxel_data->offset.z);   // OFFSET OF THE VOXEL GEOMETRY (DEFAULT ORIGIN AT LOWER BACK CORNER) [cm]     !!DBTv1.4!!
@@ -2040,7 +2040,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
     {
     
       // -- Read material file name:
-      trim_name(new_line, file_name_materials[i]);    
+      trim_name(new_line, file_name_materials[i], sizeof(file_name_materials[i]));    
 
       
       // !!inputDensity!! Allowing users to overwrite the nominal material density in the input material file and list the voxel numbers corresponding to the material in the voxel file (conversion table):
@@ -2241,7 +2241,7 @@ void read_input(int argc, char** argv, int myID, unsigned long long int* total_h
 //!       @param[in] input_line   Input sentence with blanks and a trailing comment
 //!       @param[out] file_name   Trimmed file name
 ////////////////////////////////////////////////////////////////////////////////
-void trim_name(char* input_line, char* file_name)
+void trim_name(char* input_line, char* file_name, int file_name_size)
 {
   int a=0, b=0;
   
@@ -2251,8 +2251,11 @@ void trim_name(char* input_line, char* file_name)
     a++;
   }
 
-  // Read file name until a blank or a comment symbol (#) is found:
-  while ((' '!=input_line[a])&&('#'!=input_line[a]))
+  // Read file name until a blank, a comment symbol (#) or the end of the input
+  // line is found. The destination buffers are a fixed size and the input line
+  // comes from the .in file, so the copy has to stop at file_name_size-1 to
+  // leave room for the terminator: a path that long used to run off the end.
+  while ((' '!=input_line[a])&&('#'!=input_line[a])&&('\0'!=input_line[a])&&(b<(file_name_size-1)))
   {
     file_name[b] = input_line[a];
     b++;
@@ -2260,6 +2263,13 @@ void trim_name(char* input_line, char* file_name)
   }
   
   file_name[b] = '\0';    // Terminate output string
+
+  if ((' '!=input_line[a])&&('#'!=input_line[a])&&('\0'!=input_line[a]))
+  {
+    printf("\n\n   !!trim_name ERROR!! File name longer than %d characters, truncated to \"%s\".\n\n", file_name_size-1, file_name);
+    fflush(stdout);
+    exit(-1);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
